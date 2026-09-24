@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "name": "Tobago Barge Gulfstream Oil Spill Detection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "incident_name": "Tobago Mystery Barge Gulfstream Spill",
+        "detection_timestamp": "2024-02-08T10:00:00Z",
+        "sensor": "Sentinel-1 SAR",
+        "max_backtrack_hours": 36.0,
+        "source_description": "Overturned barge Gulfstream grounded on Cove Reef, Tobago"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-60.778, 11.146],
+            [-60.850, 11.168],
+            [-60.940, 11.192],
+            [-61.030, 11.218],
+            [-61.120, 11.242],
+            [-61.128, 11.230],
+            [-61.120, 11.215],
+            [-61.025, 11.198],
+            [-60.935, 11.176],
+            [-60.845, 11.155],
+            [-60.778, 11.141],
+            [-60.775, 11.144],
+            [-60.778, 11.146]
+          ]
+        ]
+      }
+    }
+  ]
+}

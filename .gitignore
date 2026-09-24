@@ -1,0 +1,12 @@
+# Python & Isolated Environments
+env/
+__pycache__/
+*.pyc
+*.log
+crash_log.txt
+
+# Strictly Protect Sensitive Credentials
+.env
+.env.credentials
+*.credentials
+

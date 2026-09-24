@@ -1,0 +1,34 @@
+{
+  "type": "FeatureCollection",
+  "name": "Red Sea MV Sounion Tanker Spill Detection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "incident_name": "Red Sea MV Sounion Crude Tanker Attack",
+        "detection_timestamp": "2024-08-23T03:30:00Z",
+        "sensor": "Sentinel-1 SAR / Sentinel-2",
+        "max_backtrack_hours": 36.0,
+        "source_description": "Oil sheen & slick emitted from burning anchored tanker MV Sounion west of Al Hudaydah"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [41.870, 15.052],
+            [41.845, 15.110],
+            [41.815, 15.180],
+            [41.785, 15.245],
+            [41.752, 15.305],
+            [41.745, 15.295],
+            [41.775, 15.230],
+            [41.805, 15.165],
+            [41.835, 15.098],
+            [41.865, 15.048],
+            [41.870, 15.052]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "incident_name": "Fallback Test Scenario",
+  "detection_timestamp": "2024-03-01T03:30:00Z",
+  "latitude": 13.7410,
+  "longitude": 42.7360,
+  "uncertainty_radius_m": 2000,
+  "oil_type": "heavy_fuel",
+  "max_backtrack_hours": 72
+}

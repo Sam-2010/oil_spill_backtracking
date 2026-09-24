@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "name": "Singapore Pasir Panjang Bunker Spill Detection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "incident_name": "Singapore Pasir Panjang Terminal Bunker Spill (Vox Maxima vs Marine Honour)",
+        "detection_timestamp": "2024-06-15T11:00:00Z",
+        "sensor": "Sentinel-1 SAR / Sentinel-2",
+        "max_backtrack_hours": 36.0,
+        "source_description": "VLSFO bunker spill resulting from dredger Vox Maxima collision with bunker tanker Marine Honour"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [103.818, 1.256],
+            [103.832, 1.248],
+            [103.850, 1.240],
+            [103.872, 1.231],
+            [103.885, 1.222],
+            [103.889, 1.226],
+            [103.882, 1.235],
+            [103.865, 1.245],
+            [103.845, 1.253],
+            [103.828, 1.260],
+            [103.818, 1.259],
+            [103.818, 1.256]
+          ]
+        ]
+      }
+    }
+  ]
+}

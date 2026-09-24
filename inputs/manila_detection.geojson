@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "name": "Manila Bay MT Terra Nova Bunker Spill Detection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "incident_name": "Manila Bay MT Terra Nova Tanker Sinking",
+        "detection_timestamp": "2024-07-26T10:00:00Z",
+        "sensor": "Sentinel-1 SAR",
+        "max_backtrack_hours": 36.0,
+        "source_description": "Industrial fuel oil spill from sunken tanker MT Terra Nova off Limay, Bataan"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [120.605, 14.452],
+            [120.640, 14.460],
+            [120.690, 14.472],
+            [120.740, 14.481],
+            [120.780, 14.490],
+            [120.785, 14.478],
+            [120.775, 14.470],
+            [120.730, 14.463],
+            [120.680, 14.453],
+            [120.635, 14.444],
+            [120.602, 14.448],
+            [120.605, 14.452]
+          ]
+        ]
+      }
+    }
+  ]
+}
