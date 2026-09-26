@@ -95,37 +95,58 @@ The pipeline consists of two tightly coupled engines:
 
 ```
 .
-├── config.yaml                     # Unified configuration (paths, weights, thresholds)
-├── run_combined_forensics.py       # Master CLI: runs Upstream + Downstream + Report generation
+├── config.yaml                     # Unified configuration (weights, thresholds)
+├── run_combined_forensics.py       # Master CLI: Upstream + Downstream + Report
 ├── run_backtrack.py                # Standalone Upstream Backtracking CLI
 ├── run_attribution.py              # Standalone Downstream AIS Attribution CLI
 ├── generate_report.py              # Standalone Forensic Report Generator (MD & PDF)
-├── src/
+│
+├── src/                            # Core engine source code
 │   ├── morphology.py               # Satellite slick geometry & diffusion age
 │   ├── backtrack_engine.py         # OpenDrift reverse-time Lagrangian engine
+│   ├── data_fetcher.py             # CMEMS data acquisition & reader setup
 │   ├── output_formatter.py         # Origin solver & GeoJSON corridor generator
 │   ├── reporting/                  # Publication-grade report generation engine
-│   │   ├── __init__.py
 │   │   └── report_generator.py     # Deterministic Markdown, HTML & Edge PDF compiler
 │   └── attribution/                # Downstream AIS & Infrastructure Engine
-│       ├── models.py               # Typed dataclasses (Corridors, Vessels, CPAs, Dossiers)
+│       ├── models.py               # Typed dataclasses (Corridors, Vessels, CPAs)
 │       ├── preflight.py            # Spatial and temporal boundary validator
 │       ├── data_loader.py          # AIS ingestion & GeoJSON infrastructure indexing
 │       ├── trajectory.py           # Spherical interpolation & loitering metrics
 │       ├── dark_ship.py            # AIS gap dead-reckoning extrapolation
 │       ├── cpa.py                  # Closest Point of Approach solver
 │       ├── scoring.py              # MCDA ranking engine with distance/time decay
-│       └── decision_engine.py      # Forensic verdict resolver, dossier & HTML generator
-├── data/
+│       └── decision_engine.py      # Forensic verdict resolver & dossier generator
+│
+├── scripts/                        # Data acquisition & preprocessing utilities
+│   ├── downloaders/                # CMEMS & NOAA AIS download scripts
+│   │   ├── download_ais_resilient.py
+│   │   ├── download_live_cmems.py
+│   │   ├── download_mc20_pipeline.py
+│   │   └── ...                     # (+ 4 more regional download scripts)
+│   ├── extractors/                 # AIS data extraction & filtering
+│   │   ├── extract_mc20_ais.py
+│   │   └── extract_main_pass_ais.py
+│   └── generate_demo_forcing.py    # Demo synthetic forcing generator
+│
+├── tests/                          # Test suites & benchmark runners
+│   ├── run_all_benchmarks.py       # Multi-incident benchmark suite
+│   ├── test_downstream_ais.py      # Downstream attribution engine tests
+│   └── test_phase[2-4].py          # Phase-specific integration tests
+│
+├── docs/                           # Project documentation
+│   └── HANDOVER_REPORT.md          # System architecture handover report
+│
+├── data/                           # Oceanographic & vessel datasets
 │   ├── ais/                        # Cleaned benchmark AIS broadcasts (.csv)
-│   ├── currents/                   # Copernicus Marine hydrodynamic netCDF files (.nc)
-│   ├── wind/                       # Copernicus Marine wind vector netCDF files (.nc)
-│   ├── waves/                      # Copernicus Marine Stokes drift netCDF files (.nc)
-│   └── infrastructure/             # Regional marine infrastructure
-│       ├── regional_pipelines.geojson
-│       └── regional_platforms.geojson
-├── inputs/                         # Satellite slick detection footprints (.geojson / .json)
-└── outputs/                        # Forensic dossiers, HTML maps, and query corridors
+│   ├── currents/                   # CMEMS surface current netCDF files (.nc)
+│   ├── wind/                       # CMEMS wind vector netCDF files (.nc)
+│   ├── waves/                      # CMEMS Stokes drift netCDF files (.nc)
+│   ├── infrastructure/             # BOEM/BSEE pipeline & platform GeoJSON
+│   └── sar/                        # Sentinel-1 SAR imagery
+│
+├── inputs/                         # Satellite slick detection footprints (.geojson)
+└── outputs/                        # Generated forensic dossiers, maps & reports
 ```
 
 ---
