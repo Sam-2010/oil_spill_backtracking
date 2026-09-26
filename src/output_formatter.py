@@ -114,6 +114,17 @@ class TrajectoryOutputFormatter:
                     candidate_polygons.append(step["polygon"])
                     candidate_centroids.append(step["centroid"])
 
+            # If the morphology origin window is narrower than the hourly sampling step,
+            # select the step closest to the window's midpoint
+            if not candidate_polygons and hourly_corridor:
+                mid_dt = start_dt + (end_dt - start_dt) / 2
+                closest_step = min(
+                    hourly_corridor,
+                    key=lambda s: abs((datetime.fromisoformat(s["timestamp"].replace("Z", "+00:00")) - mid_dt).total_seconds())
+                )
+                candidate_polygons.append(closest_step["polygon"])
+                candidate_centroids.append(closest_step["centroid"])
+
         # Check for coastal stranding convergence across the full trajectory
         num_particles = lons.shape[0]
         stranded_pts = []
@@ -314,19 +325,30 @@ class TrajectoryOutputFormatter:
             tiles=None
         )
 
-        # Base Layer 1: Esri World Imagery (High-res Satellite)
+        # Base Layer 1: Esri World Imagery (High-res Satellite) - Default
         folium.TileLayer(
             tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             attr="Esri World Imagery",
-            name="Satellite (Esri)",
+            name="Satellite (Esri World Imagery)",
+            overlay=False,
             control=True
         ).add_to(m)
 
-        # Base Layer 2: CartoDB Voyager (Clear marine/coastal map)
+        # Base Layer 2: Esri Ocean Basemap (Bathymetry & Maritime Navigation, No API Key needed)
         folium.TileLayer(
-            tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-            attr="&copy; OpenStreetMap contributors &copy; CARTO",
-            name="CartoDB Navigation Map",
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri Ocean Basemap",
+            name="Ocean Navigation (Esri)",
+            overlay=False,
+            control=True
+        ).add_to(m)
+
+        # Base Layer 3: Esri World Topographic (Keyless)
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri World Topo Map",
+            name="Topographic & Coastal Map",
+            overlay=False,
             control=True
         ).add_to(m)
 

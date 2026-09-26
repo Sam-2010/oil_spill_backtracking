@@ -75,6 +75,11 @@ def main():
         default=None,
         help="Path to custom waves NetCDF file"
     )
+    parser.add_argument(
+        "--head-only",
+        action="store_true",
+        help="For continuous active plumes, automatically segment and seed only the narrow emergence head/core boil."
+    )
 
     args = parser.parse_args()
 
@@ -92,7 +97,7 @@ def main():
     # -------------------------------------------------------------
     print(f"\n[1/3] Analyzing input slick geometry from: {input_path.name}")
     analyzer = SlickMorphologyAnalyzer(horizontal_diffusivity_m2s=args.diffusivity)
-    detection = analyzer.analyze(str(input_path))
+    detection = analyzer.analyze(str(input_path), head_only=args.head_only)
 
     if detection.get("warning"):
         print(f" -> {detection['warning']}")

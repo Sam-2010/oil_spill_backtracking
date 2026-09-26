@@ -1,0 +1,30 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-88.974, 28.939],
+        [-88.976, 28.936],
+        [-88.974, 28.933],
+        [-88.970, 28.932],
+        [-88.966, 28.935],
+        [-88.967, 28.939],
+        [-88.971, 28.941],
+        [-88.974, 28.939]
+      ]
+    ]
+  },
+  "properties": {
+    "incident_name": "Taylor Energy MC-20 Saratoga Core Boil",
+    "detection_timestamp": "2023-11-17T23:54:16Z",
+    "feature_type": "concentrated_leak_cluster",
+    "oil_type": "medium_crude",
+    "max_backtrack_hours": 12,
+    "ground_truth_origin": {
+      "latitude": 28.937,
+      "longitude": -88.971,
+      "description": "Taylor Energy Saratoga Platform (MC-20)"
+    }
+  }
+}

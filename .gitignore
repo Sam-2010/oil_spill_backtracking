@@ -8,5 +8,6 @@ crash_log.txt
 # Strictly Protect Sensitive Credentials
 .env
 .env.credentials
-*.credentials
-
+# Large raw download archives (>100MB GitHub limit)
+*.zip
+temp_*

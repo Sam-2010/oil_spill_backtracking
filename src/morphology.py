@@ -34,18 +34,25 @@ class SlickMorphologyAnalyzer:
         """
         self.kh = horizontal_diffusivity_m2s
 
-    def analyze(self, input_data: Any) -> Dict[str, Any]:
+    def analyze(self, input_data: Any, head_only: bool = False) -> Dict[str, Any]:
         """
         Main entry point. Accepts:
           - Path to GeoJSON or JSON file (str)
           - Parsed dictionary (GeoJSON Feature / FeatureCollection / Fallback point dict)
+          :param head_only: If True, automatically segments and seeds only the narrow head/core boil of elongated plumes.
         """
         data = self._load_data(input_data)
         geom, props = self._extract_geometry_and_props(data)
 
-        detection_time_str = props.get("detection_timestamp")
+        detection_time_str = (
+            props.get("detection_timestamp") 
+            or props.get("detected_at") 
+            or props.get("timestamp")
+        )
         if not detection_time_str:
-            raise ValueError("Input data must specify 'detection_timestamp' in ISO 8601 UTC format.")
+            raise ValueError(
+                "Input data must specify 'detection_timestamp' (or 'detected_at' / 'timestamp') in ISO 8601 UTC format."
+            )
         
         detection_time = datetime.fromisoformat(detection_time_str.replace("Z", "+00:00"))
         max_horizon_hours = float(props.get("max_backtrack_hours", 72))
@@ -53,7 +60,7 @@ class SlickMorphologyAnalyzer:
         if geom is None or geom.geom_type not in ["Polygon", "MultiPolygon"]:
             return self._handle_fallback(data, props, detection_time, max_horizon_hours)
 
-        return self._analyze_polygon(geom, props, detection_time, max_horizon_hours)
+        return self._analyze_polygon(geom, props, detection_time, max_horizon_hours, head_only=head_only)
 
     def _load_data(self, input_data: Any) -> Dict[str, Any]:
         if isinstance(input_data, str):
@@ -75,9 +82,17 @@ class SlickMorphologyAnalyzer:
             features = data.get("features", [])
             if not features:
                 return None, {}
-            first = features[0]
-            geom = shape(first.get("geometry", {})) if first.get("geometry") else None
-            return geom, first.get("properties", {})
+            # When multiple features exist, select the primary slick (largest area)
+            valid_shapes = [
+                (shape(f["geometry"]), f.get("properties", {}))
+                for f in features
+                if f.get("geometry")
+            ]
+            if not valid_shapes:
+                return None, {}
+            valid_shapes.sort(key=lambda item: item[0].area, reverse=True)
+            primary_geom, primary_props = valid_shapes[0]
+            return primary_geom, primary_props
 
         # Case 3: Direct Polygon geometry
         if data.get("type") in ["Polygon", "MultiPolygon"]:
@@ -133,7 +148,8 @@ class SlickMorphologyAnalyzer:
         poly_wgs84: Polygon,
         props: Dict[str, Any],
         detection_time: datetime,
-        max_horizon_hours: float
+        max_horizon_hours: float,
+        head_only: bool = False
     ) -> Dict[str, Any]:
         """
         Projects polygon to a local metric projection and analyzes morphology.
@@ -147,6 +163,7 @@ class SlickMorphologyAnalyzer:
         )
         wgs84_proj = pyproj.CRS.from_epsg(4326)
         to_metric = pyproj.Transformer.from_crs(wgs84_proj, aeqd_proj, always_xy=True).transform
+        to_wgs84 = pyproj.Transformer.from_crs(aeqd_proj, wgs84_proj, always_xy=True).transform
 
         poly_metric = transform(to_metric, poly_wgs84)
 
@@ -193,17 +210,46 @@ class SlickMorphologyAnalyzer:
         # The narrower end is the head (fresh release); the wider end is the tail (weathered)
         if width_a < width_b:
             w_head, w_tail = width_a, width_b
+            head_mask = tip_a_mask
         else:
             w_head, w_tail = width_b, width_a
+            head_mask = tip_b_mask
+
+        # If head-only segmentation is enabled for continuous plumes:
+        if head_only and np.sum(head_mask) >= 3:
+            from shapely.geometry import MultiPoint
+            head_pts = [tuple(p) for p in poly_coords[head_mask]]
+            head_poly_m = MultiPoint(head_pts).convex_hull.buffer(max(w_head * 0.1, 50.0))
+            poly_wgs84 = transform(to_wgs84, head_poly_m)
+            poly_metric = head_poly_m
+            centroid_lon = poly_wgs84.centroid.x
+            centroid_lat = poly_wgs84.centroid.y
+            length_m = max(float(w_head * 1.5), 500.0)
+            w_tail = w_head * 1.2
+            logger.info("Auto-segmented narrow head/core boil from elongated plume for point-source tracking.")
 
         # Ensure minimal physical baseline width
         w_head = max(w_head, 50.0)
         w_tail = max(w_tail, w_head + 10.0)
 
-        # Elapsed age estimation via lateral turbulent diffusion:
-        # Delta T = (W_tail^2 - W_head^2) / (8 * Kh)
-        delta_t_seconds = (w_tail**2 - w_head**2) / (8.0 * self.kh)
-        elapsed_hours = delta_t_seconds / 3600.0
+        # Elapsed age estimation:
+        if head_only:
+            # For actively surfacing emergence boils, oil age at the boil head is < 1.0 hr
+            elapsed_hours = 0.5
+        else:
+            # 1. Lateral turbulent diffusion: Delta T_diff = (W_tail^2 - W_head^2) / (8 * Kh)
+            delta_t_seconds = (w_tail**2 - w_head**2) / (8.0 * self.kh)
+            elapsed_hours_diff = delta_t_seconds / 3600.0
+
+            # 2. Dual consistency check: Length-advection lower bound
+            # In elongated slicks/plumes (continuous seeps or wind-streaked plumes), lateral spread is
+            # suppressed by Langmuir circulation. An elongated plume of length L requires advective transit:
+            # T_advect = L / v_drift (where typical surface drift v_drift ~ 0.35 m/s).
+            v_drift_typical_ms = 0.35
+            elapsed_hours_advect = (length_m / v_drift_typical_ms) / 3600.0
+
+            # Harmonize diffusion and advection estimates:
+            elapsed_hours = max(elapsed_hours_diff, elapsed_hours_advect * 0.75)
 
         # Bound by max_backtrack_hours ceiling
         elapsed_hours_clamped = min(elapsed_hours, max_horizon_hours)

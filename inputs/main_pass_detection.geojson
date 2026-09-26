@@ -1,0 +1,33 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [-88.718, 29.305],
+        [-88.745, 29.280],
+        [-88.810, 29.225],
+        [-88.885, 29.155],
+        [-88.920, 29.115],
+        [-88.895, 29.095],
+        [-88.845, 29.140],
+        [-88.775, 29.210],
+        [-88.705, 29.275],
+        [-88.700, 29.300],
+        [-88.718, 29.305]
+      ]
+    ]
+  },
+  "properties": {
+    "incident_name": "Main Pass Offshore Crude Oil Release (MPOG Pipeline)",
+    "detection_timestamp": "2023-11-16T20:00:00Z",
+    "sensor": "US Coast Guard Aerial Surveillance / NOAA OR&R / Sentinel-1 SAR",
+    "oil_type": "medium_crude",
+    "max_backtrack_hours": 36,
+    "ground_truth_origin": {
+      "latitude": 29.29717,
+      "longitude": -88.71800,
+      "description": "Main Pass Oil Gathering (MPOG) 67-mile offshore crude pipeline corridor"
+    }
+  }
+}
