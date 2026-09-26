@@ -8,12 +8,15 @@ Then extracts all AIS pings for the Main Pass / Mississippi Delta bounding box.
 
 import os
 import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import time
 import urllib.request
-from pathlib import Path
 
-# Add project root
-sys.path.insert(0, os.path.abspath("."))
 import extract_main_pass_ais
 
 URL = "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2023/AIS_2023_11_16.zip"

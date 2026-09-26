@@ -8,6 +8,14 @@ Unit and verification test for Phase 4:
 3. Verifies that the particle ensemble backtracks south-southeast toward the original strike zone.
 """
 
+import os
+import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 from src.morphology import SlickMorphologyAnalyzer
 from src.backtrack_engine import OilSpillBacktracker
 

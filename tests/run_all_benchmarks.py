@@ -5,14 +5,17 @@ Executes backtracking across all 7 real-world benchmark incidents and calculates
 the precise geographic origin error against authoritative ground truth coordinates.
 """
 
+import os
 import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import json
 import math
-from pathlib import Path
 from datetime import datetime
-
-# Add project root
-sys.path.insert(0, str(Path(".").resolve()))
 
 from src.morphology import SlickMorphologyAnalyzer
 from src.backtrack_engine import OilSpillBacktracker

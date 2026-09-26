@@ -6,6 +6,14 @@ Unit and verification test for Phase 2:
 2. Tests the fallback handler on the point-only input and confirms the warning message.
 """
 
+import os
+import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import json
 from src.morphology import SlickMorphologyAnalyzer
 

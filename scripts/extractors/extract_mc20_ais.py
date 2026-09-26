@@ -5,10 +5,17 @@ Extracts NOAA AIS records from AIS_2023_11_17.zip for the
 Mississippi Canyon Block 20 / Taylor Energy sector.
 """
 
+import os
+import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import io
 import csv
 import zipfile
-from pathlib import Path
 
 def main():
     zip_path = Path("data/ais/AIS_2023_11_17.zip")

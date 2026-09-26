@@ -12,15 +12,18 @@ Downloads all authentic datasets for the Taylor Energy MC-20 incident (Nov 17, 2
 
 import os
 import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import io
 import csv
 import zipfile
 import urllib.request
 from datetime import datetime
-from pathlib import Path
 
-# Add project root
-sys.path.insert(0, os.path.abspath("."))
 from src.data_fetcher import EnvironmentalDataManager
 
 def download_cmems():
@@ -67,7 +70,6 @@ def download_cmems():
         output_filename="cmems_wind_mc20.nc"
     )
     print(" -> All CMEMS NetCDFs for MC-20 successfully downloaded! [OK]")
-
 
 def download_noaa_ais():
     print("\n" + "=" * 65)
@@ -190,7 +192,6 @@ def download_noaa_ais():
     print(f" -> Total sector pings: {matched_records:,}")
     print(f" -> Distinct vessels in MC-20 sector: {len(unique_vessels)}")
     print("=" * 65)
-
 
 if __name__ == "__main__":
     download_cmems()

@@ -11,8 +11,15 @@ Lon: [-90.8, -89.7], Lat: [27.2, 28.3]
 Time domain: 2026-09-25 00:00 to 2026-09-26 12:00 UTC (37 hourly steps)
 """
 
-from datetime import datetime
+import os
+import sys
 from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
+from datetime import datetime
 import numpy as np
 import netCDF4 as nc
 

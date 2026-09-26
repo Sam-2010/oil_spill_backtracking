@@ -10,10 +10,17 @@ Performs:
   - Identifies culprit vessel(s) with IMO, MMSI, callsign, and closest approach.
 """
 
+import os
+import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import json
 import csv
 from datetime import datetime
-from pathlib import Path
 from shapely.geometry import shape, Point
 
 def match_vessels_to_corridor(

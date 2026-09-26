@@ -5,10 +5,17 @@ Extracts and filters NOAA Marine Cadastre AIS broadcast points for the
 Main Pass Oil Spill sector (Mississippi River Delta, Nov 16, 2023).
 """
 
+import os
+import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import io
 import csv
 import zipfile
-from pathlib import Path
 
 def main():
     zip_path = Path("data/ais/AIS_2023_11_16.zip")

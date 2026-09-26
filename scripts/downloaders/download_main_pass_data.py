@@ -12,15 +12,19 @@ Downloads 100% authentic, authoritative datasets for the Main Pass Oil Spill (Gu
 
 import os
 import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 import io
 import csv
 import zipfile
 import urllib.request
 from datetime import datetime
-from pathlib import Path
 
-# Add project root to sys.path
-sys.path.insert(0, os.path.abspath("."))
+ to sys.path
 from src.data_fetcher import EnvironmentalDataManager
 
 def download_cmems_data():
@@ -67,7 +71,6 @@ def download_cmems_data():
         output_filename="cmems_wind_main_pass.nc"
     )
     print(" -> All CMEMS NetCDF forcing files successfully downloaded! [OK]")
-
 
 def download_noaa_ais():
     print("\n" + "=" * 65)
@@ -175,7 +178,6 @@ def download_noaa_ais():
     print("\nSample vessels detected in sector on Nov 16, 2023:")
     for i, (mmsi, (name, vtype)) in enumerate(list(unique_vessels.items())[:10]):
         print(f"    {i+1}. MMSI {mmsi}: {name} (Type code: {vtype})")
-
 
 if __name__ == "__main__":
     download_cmems_data()

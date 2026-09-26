@@ -5,6 +5,14 @@ Downloads live Copernicus Marine (CMEMS) hourly ocean currents and wave data
 for the MV Rubymar incident in the Southern Red Sea / Bab-el-Mandeb.
 """
 
+import os
+import sys
+from pathlib import Path
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+os.chdir(_PROJECT_ROOT)
+
 from datetime import datetime
 from src.data_fetcher import EnvironmentalDataManager
 
