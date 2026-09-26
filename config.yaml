@@ -1,0 +1,49 @@
+# Configuration for AIS & Infrastructure Oil Spill Forensic Attribution Engine
+
+preflight:
+  # Additional temporal buffer in hours around calculated [T0 - 1.25*dT, T0 - 0.75*dT]
+  temporal_buffer_hours: 1.0
+  # Spatial buffer margin in nautical miles
+  spatial_buffer_nm: 5.0
+  # Maximum plausible vessel transit speed in knots for search radius expansion
+  max_transit_speed_knots: 25.0
+
+sanitization:
+  # Speed over ground limits (knots)
+  max_plausible_speed_knots: 45.0
+  # NMEA AIS sentinel value representing unavailable speed
+  sentinel_speed_knots: 102.3
+  # Vessel types to exclude (e.g. 0 = unspecified/buoys/base stations)
+  exclude_vessel_types: []
+
+infrastructure:
+  # Proximity alert threshold in meters to flag asset failure/leak
+  alert_distance_meters: 500.0
+  # Maximum search radius in meters for indexing nearby assets
+  search_radius_meters: 5000.0
+  # Products considered high-risk oil carriers
+  oil_product_codes: ["OIL", "CRUDE", "COND", "LQD"]
+
+scoring:
+  mode: "dynamic" # Options: "dynamic" (continuous interpolation) or "static"
+  static_weights:
+    proximity: 0.25
+    time: 0.25
+    vessel_type: 0.20
+    alignment: 0.15
+    ais_gap: 0.15
+  dynamic_anchors:
+    t_min_hours: 1.5
+    t_max_hours: 28.0
+    fresh_profile:
+      proximity: 0.30
+      time: 0.30
+      vessel_type: 0.15
+      alignment: 0.15
+      ais_gap: 0.10
+    weathered_profile:
+      proximity: 0.15
+      time: 0.10
+      vessel_type: 0.30
+      alignment: 0.15
+      ais_gap: 0.30
