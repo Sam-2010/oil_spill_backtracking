@@ -96,13 +96,17 @@ The pipeline consists of two tightly coupled engines:
 ```
 .
 ├── config.yaml                     # Unified configuration (paths, weights, thresholds)
-├── run_combined_forensics.py       # Master CLI: runs Upstream + Downstream in one command
+├── run_combined_forensics.py       # Master CLI: runs Upstream + Downstream + Report generation
 ├── run_backtrack.py                # Standalone Upstream Backtracking CLI
 ├── run_attribution.py              # Standalone Downstream AIS Attribution CLI
+├── generate_report.py              # Standalone Forensic Report Generator (MD & PDF)
 ├── src/
 │   ├── morphology.py               # Satellite slick geometry & diffusion age
 │   ├── backtrack_engine.py         # OpenDrift reverse-time Lagrangian engine
 │   ├── output_formatter.py         # Origin solver & GeoJSON corridor generator
+│   ├── reporting/                  # Publication-grade report generation engine
+│   │   ├── __init__.py
+│   │   └── report_generator.py     # Deterministic Markdown, HTML & Edge PDF compiler
 │   └── attribution/                # Downstream AIS & Infrastructure Engine
 │       ├── models.py               # Typed dataclasses (Corridors, Vessels, CPAs, Dossiers)
 │       ├── preflight.py            # Spatial and temporal boundary validator
@@ -195,18 +199,31 @@ python run_attribution.py \
   --output-dir outputs/taylor_energy/attribution
 ```
 
+### Option D: Generate Comprehensive Forensic Reports (Markdown & PDF)
+To compile a publication-grade, court-admissible investigation report from completed simulation outputs:
+
+```bash
+# Generate report for Taylor Energy benchmark
+python generate_report.py --incident taylor_energy
+
+# Generate report for any custom incident output directory
+python generate_report.py --dir outputs/my_investigation
+```
+
 ---
 
 ## 6. Generated Forensic Outputs
 
 Every investigation produces an auditable evidence package:
 
-1. **`outputs/.../origin_report.json`**: Physical backtracking summary, containing estimated spill release time $[T_{start}, T_{end}]$ UTC, coordinates, and dispersion variance.
-2. **`outputs/.../trajectory_corridor.geojson`**: Standardized GeoJSON spatio-temporal query polygon encompassing the reverse particle drift history.
-3. **`outputs/.../trajectory_map.html`**: Interactive satellite map showing slick polygon, particle trajectories, and resolved origin zone.
-4. **`outputs/.../attribution/culprit_dossier.json`**: Comprehensive forensic breakdown of all candidates, MCDA scores, CPAs, loitering analysis, dark-ship gaps, and final verdict.
-5. **`outputs/.../attribution/culprit_map.html`**: Interactive forensic visualization rendering vessel tracks, AIS points, infrastructure layers, CPA lines, and confidence overlays.
-6. **`outputs/.../attribution/culprit_visual.geojson`**: Standalone GeoJSON of vessel trajectories and infrastructure for GIS tools (QGIS, ArcGIS).
+1. **`outputs/.../forensic_investigation_report.md`**: Exhaustive Markdown forensic report with mathematical derivations, data tables, candidate evaluations, and negative control clearances.
+2. **`outputs/.../forensic_investigation_report.pdf`**: Publication-grade, print-optimized PDF with executive cover styling, KPI scorecard, and status badges.
+3. **`outputs/.../origin_report.json`**: Physical backtracking summary, containing estimated spill release time $[T_{start}, T_{end}]$ UTC, coordinates, and dispersion variance.
+4. **`outputs/.../trajectory_corridor.geojson`**: Standardized GeoJSON spatio-temporal query polygon encompassing the reverse particle drift history.
+5. **`outputs/.../trajectory_map.html`**: Interactive satellite map showing slick polygon, particle trajectories, and resolved origin zone.
+6. **`outputs/.../attribution/culprit_dossier.json`**: Comprehensive forensic breakdown of all candidates, MCDA scores, CPAs, loitering analysis, dark-ship gaps, and final verdict.
+7. **`outputs/.../attribution/culprit_map.html`**: Interactive forensic visualization rendering vessel tracks, AIS points, infrastructure layers, CPA lines, and confidence overlays.
+8. **`outputs/.../attribution/culprit_visual.geojson`**: Standalone GeoJSON of vessel trajectories and infrastructure for GIS tools (QGIS, ArcGIS).
 
 ---
 

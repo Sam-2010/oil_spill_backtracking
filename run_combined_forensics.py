@@ -33,6 +33,7 @@ def main():
     parser.add_argument("--ais", default=None, help="Custom AIS CSV/Parquet path")
     parser.add_argument("--hours", type=float, default=6.0, help="Simulation backtrack hours")
     parser.add_argument("--particles", type=int, default=500, help="Particle count")
+    parser.add_argument("--no-report", action="store_true", help="Skip automatic PDF and Markdown report generation")
     args = parser.parse_args()
 
     python_bin = sys.executable
@@ -129,6 +130,17 @@ def main():
     print(f"Interactive Forensic Map: file:///{os.path.abspath(map_path).replace(os.sep, '/')}")
     print(f"Complete Audit Dossier:   file:///{os.path.abspath(dossier_path).replace(os.sep, '/')}")
     print("=" * 80)
+
+    # -------------------------------------------------------------
+    # Step 5: Automated Markdown & PDF Report Generation
+    # -------------------------------------------------------------
+    if not args.no_report:
+        from src.reporting.report_generator import generate_forensic_report
+        print("\n>>> [RUNNING] Generating Comprehensive Forensic Investigation Report (MD & PDF)...")
+        rep_res = generate_forensic_report(upstream_out)
+        print(f" -> Forensic Markdown: file:///{rep_res['markdown'].replace(os.sep, '/')}")
+        print(f" -> Forensic PDF:      file:///{rep_res['pdf'].replace(os.sep, '/')}")
+        print("=" * 80)
 
 if __name__ == "__main__":
     main()
