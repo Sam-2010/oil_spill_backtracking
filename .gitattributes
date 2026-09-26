@@ -1,0 +1,6 @@
+# GitHub Linguist Language Detection Overrides
+# Exclude dynamically generated HTML maps, reports, and data from language statistics
+
+*.html linguist-detectable=false
+outputs/** linguist-generated=true
+data/** linguist-vendored=true
