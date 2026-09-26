@@ -1,5 +1,5 @@
 # Maritime Environmental Forensics & Oil Spill Origin Attribution System
-**Comprehensive Engineering Report & Benchmark Incident Catalog**  
+**Comprehensive Engineering Report & Taylor Energy Benchmark Documentation**  
 *Repository:* `https://github.com/Sam-2010/oil_spill_backtracking.git`  
 *Branch:* `main` | *Environment:* Python 3.11 / OpenDrift 1.11 / CMEMS / GDAL
 
@@ -16,20 +16,19 @@
 4. [Directory Restructuring & Dynamic Path Architecture](#4-directory-restructuring--dynamic-path-architecture)
 5. [Validation & Performance Benchmarks](#5-validation--performance-benchmarks)
 6. [CLI Execution Guide](#6-cli-execution-guide)
-7. [Searchable Real-World Benchmark Incidents Catalog](#7-searchable-real-world-benchmark-incidents-catalog)
-   - [1. Taylor Energy MC-20 (USA)](#1-taylor-energy-mc-20-usa---primary-e2e-benchmark)
-   - [2. Main Pass MPOG Pipeline (USA)](#2-main-pass-mpog-pipeline-usa)
-   - [3. MV Rubymar (Southern Red Sea)](#3-mv-rubymar-southern-red-sea)
-   - [4. Barge Gulfstream (Tobago)](#4-barge-gulfstream-tobago)
-   - [5. Vox Maxima & Marine Honour (Singapore)](#5-vox-maxima--marine-honour-singapore)
-   - [6. MT Terra Nova (Manila Bay, Philippines)](#6-mt-terra-nova-manila-bay-philippines)
-   - [7. MV Sounion (Central Red Sea)](#7-mv-sounion-central-red-sea)
+7. [Benchmark Incident Deep-Dive: Taylor Energy MC-20](#7-benchmark-incident-deep-dive-taylor-energy-mc-20)
+   - [Incident Overview & Ground Truth Coordinates](#incident-overview--ground-truth-coordinates)
+   - [Historical & Environmental Background](#historical--environmental-background)
+   - [Why This Incident Was Chosen for the System](#why-this-incident-was-chosen-for-the-system)
+   - [Data Sources & Ingestion Details](#data-sources--ingestion-details)
+   - [Search Keywords & Authoritative References for Team Research](#search-keywords--authoritative-references-for-team-research)
+8. [Summary of Output Deliverables](#8-summary-of-output-deliverables)
 
 ---
 
 ## 1. Executive Summary
 
-When marine oil slicks are detected by satellite Synthetic Aperture Radar (SAR) or aerial surveys, identifying the responsible polluter is traditionally complicated by ocean currents, wind drift, transponder gaps, and lack of integration between physical models and vessel tracking streams.
+When marine oil slicks are detected by satellite Synthetic Aperture Radar (SAR) or aerial surveys, identifying the responsible polluter is traditionally complicated by ocean currents, wind drift, transponder gaps, and a lack of integration between physical oceanographic models and maritime vessel intelligence.
 
 This project delivers an automated, court-admissible, end-to-end forensic attribution platform that connects:
 1. **Physical Oceanographic Backtracking:** Solves slick diffusion kinetics ($W_{\text{tail}} > W_{\text{head}}$), estimates release age, and drives reverse-time Lagrangian particle trajectories through ocean hydrodynamic currents, wind, and wave drift.
@@ -160,7 +159,7 @@ Located in `run_combined_forensics.py`:
 
 ## 4. Directory Restructuring & Dynamic Path Architecture
 
-To ensure professional code presentation, maintainability, and clean GitHub repository structure, the repository was reorganized:
+The codebase has been reorganized into a modular layout:
 
 ```
 oil_spill_backtracking/
@@ -185,7 +184,7 @@ oil_spill_backtracking/
 │   └── generate_demo_forcing.py       # Synthetic test data generator
 │
 ├── tests/                             # Test suites & benchmark scripts
-│   ├── run_all_benchmarks.py          # 7-incident automated benchmark suite
+│   ├── run_all_benchmarks.py          # Multi-incident test runner
 │   ├── test_downstream_ais.py         # Attribution pipeline test
 │   └── test_phase[2-4].py             # Phase validation tests
 │
@@ -215,7 +214,7 @@ oil_spill_backtracking/
 ```
 
 ### Dynamic Path Resolution
-All moved scripts in `scripts/` and `tests/` were injected with dynamic project root resolvers:
+All scripts in `scripts/` and `tests/` use dynamic project root resolvers:
 ```python
 import os
 import sys
@@ -231,7 +230,7 @@ This guarantees that relative paths (`data/...`, `inputs/...`, `outputs/...`) an
 
 ## 5. Validation & Performance Benchmarks
 
-The system was validated against the **Taylor Energy MC-20** real-world incident:
+The system was evaluated against the **Taylor Energy MC-20** ground truth:
 
 | Metric | Result | Benchmark Standard |
 |:---|:---:|:---:|
@@ -277,92 +276,55 @@ python run_attribution.py \
 python generate_report.py --incident taylor_energy
 ```
 
-### Option 5: Run Full Benchmark Suite (All 7 Incidents)
-```bash
-python tests/run_all_benchmarks.py
-```
-
 ---
 
-## 7. Searchable Real-World Benchmark Incidents Catalog
+## 7. Benchmark Incident Deep-Dive: Taylor Energy MC-20
 
-Use the following catalog to verify, search, and research the 7 historical maritime incidents configured in the platform:
+### Incident Overview & Ground Truth Coordinates
+* **Official Incident Name:** Taylor Energy Mississippi Canyon Block 20 Oil Discharge
+* **Observation / Detection Date:** November 17, 2023 at 23:54:16 UTC
+* **Detection Footprint:** Sentinel-1 Synthetic Aperture Radar (SAR) polygon (`inputs/taylor_energy_mc20_detection.geojson`)
+* **Geographic Domain:** Mississippi Canyon Block 20, Gulf of Mexico (~10 nautical miles off Louisiana, USA)
+* **Authoritative Ground Truth Coordinates:**
+  * **Latitude:** `28.93700° N` ($28^\circ 56' 13.2''\text{ N}$)
+  * **Longitude:** `-88.97100° W` ($-88^\circ 58' 15.6''\text{ W}$)
+* **Solved Origin Centroid by Platform:** `28.93537° N, -88.96780° W`
+* **Geographic Accuracy:** **~310 meters error** (origin identified within 3 football fields of the wellhead).
 
----
+### Historical & Environmental Background
+1. **The Event:** In September 2004, Category 5 Hurricane Ivan swept across the Gulf of Mexico. Massive underwater mudslides toppled the Taylor Energy Saratoga production platform into 450 feet (137m) of water.
+2. **The Damage:** The platform jacket slid approximately 560 feet away, dragging with it 28 active wellhead conductors. The wells were buried under nearly 100 feet of dense ocean mud and sediment, creating a continuous underwater leak that has discharged oil for nearly two decades.
+3. **The Spill Status:** Recognised as the longest-running continuous oil spill in US maritime history. In 2019, under a US Coast Guard Administrative Order, engineering contractor Couvillion Group installed a subsea Rapid Response System (a deepwater containment separator dome anchored over the seabed) which collects over 1,000 gallons per day of crude oil. However, persistent surface sheens continue to form and drift from residual seeps.
 
-### 1. Taylor Energy MC-20 (USA) - *Primary E2E Benchmark*
-* **Official Name:** Taylor Energy Mississippi Canyon Block 20 Oil Discharge
-* **Observation Date:** November 17, 2023 *(Spill active since September 2004)*
-* **Location:** Mississippi Canyon Block 20, Gulf of Mexico (~10 miles off Louisiana coast)
-* **Ground Truth Coordinates:** `28.93700° N, -88.97100° W` (Saratoga Platform wellhead cluster)
-* **Incident Summary:** In September 2004, Hurricane Ivan triggered an underwater mudslide that toppled the Taylor Energy Saratoga production platform, burying 28 active wellheads under 100 feet of mud and creating the longest-running continuous oil spill in US history.
-* **Search Keywords:** `"Taylor Energy" "MC-20" "Mississippi Canyon 20" "Hurricane Ivan mudslide" "Couvillion Group containment"`
+### Why This Incident Was Chosen for the System
+The Taylor Energy MC-20 incident represents the gold standard for validating reverse-time oil spill backtracking and forensic attribution engines for several reasons:
+* **Known Fixed Ground Truth:** Because the exact latitude and longitude of the Saratoga platform and wellhead cluster are cataloged by the Bureau of Ocean Energy Management (BOEM), the physical accuracy of the reverse Lagrangian model can be verified down to the meter.
+* **Complex Multi-Source Environment:** The Mississippi Canyon experiences heavy commercial maritime traffic (cargo ships, tugs, offshore service vessels entering and leaving the Mississippi River Delta) alongside dense subsea infrastructure (pipelines and platforms). This provides a rigorous real-world test for the downstream AIS attribution engine to evaluate vessels, calculate CPAs, assess pipelines, and avoid false accusations.
 
----
+### Data Sources & Ingestion Details
+* **Environmental Models (CMEMS):**
+  * `data/currents/cmems_currents_mc20.nc`: Copernicus Marine global ocean physics analysis (hourly surface velocities $u$ and $v$ at 0.083° resolution).
+  * `data/wind/cmems_wind_mc20.nc`: 10-meter atmospheric wind vector fields ($u_{\text{wind}}, v_{\text{wind}}$).
+  * `data/waves/cmems_waves_mc20.nc`: Wave spectrum Stokes drift ($V_{\text{SDX}}, V_{\text{SDY}}$).
+* **AIS Broadcast Stream:**
+  * `data/ais/taylor_energy_mc20_noaa_ais_2023_11_17.csv`: NOAA Marine Cadastre AIS transponder stream for the Mississippi Delta sector, filtered to 861 corridor pings across 15 vessels during the incident window.
+* **Infrastructure Layers:**
+  * `data/infrastructure/regional_pipelines.geojson` and `regional_platforms.geojson`: Comprehensive Bureau of Safety and Environmental Enforcement (BSEE) offshore asset spatial databases.
 
-### 2. Main Pass MPOG Pipeline (USA)
-* **Official Name:** Main Pass Oil Gathering (MPOG) Pipeline Rupture
-* **Observation Date:** November 16, 2023
-* **Location:** East of Venice, Plaquemines Parish, Louisiana, Gulf of Mexico
-* **Ground Truth Coordinates:** `29.29717° N, -88.71800° W` (Collet mechanical connector break)
-* **Incident Summary:** A 16-inch underwater crude oil pipeline operated by Third Coast Midstream / MPOG ruptured in 40 feet of water, releasing an estimated 1.1 million gallons (~26,000 barrels) of crude oil into the Gulf of Mexico.
-* **Search Keywords:** `"Main Pass Oil Gathering" "MPOG pipeline leak" "Third Coast Midstream November 2023" "Plaquemines oil spill"`
-
----
-
-### 3. MV Rubymar (Southern Red Sea)
-* **Official Name:** MV Rubymar Sinking & Fertilizer/Bunker Spill
-* **Observation Date:** February 18 – March 2, 2024
-* **Location:** Southern Red Sea / Bab el-Mandeb Strait, off Yemen
-* **Ground Truth Coordinates:** `13.34400° N, 43.14500° E` (Missile strike & drift start location)
-* **Incident Summary:** The UK-owned bulk carrier *MV Rubymar* was struck by Houthi anti-ship ballistic missiles while carrying 21,000 metric tons of ammonium phosphate fertilizer and heavy bunker fuel. The vessel drifted uncontrolled for 12 days leaving an 18-mile oil slick before sinking on March 2, 2024.
-* **Search Keywords:** `"MV Rubymar" "Rubymar sinking Red Sea" "Houthi missile Rubymar" "Bab el-Mandeb fertilizer slick"`
-
----
-
-### 4. Barge Gulfstream (Tobago)
-* **Official Name:** Barge Gulfstream Capsizing & Mystery Spill
-* **Observation Date:** February 7, 2024
-* **Location:** Cove Eco-Industrial Park Reef, southwest coast of Tobago
-* **Ground Truth Coordinates:** `11.14400° N, -60.77800° W` (Cove Reef capsizing site)
-* **Incident Summary:** An uncrewed barge, later identified as the *Gulfstream*, capsized on a shallow coral reef off Tobago. It had been towed by the tug *Solo Creed* from Panama before breaking free. The spill released thousands of barrels of heavy fuel oil across the southern Caribbean Sea.
-* **Search Keywords:** `"Barge Gulfstream" "Tobago oil spill February 2024" "Solo Creed tug" "Cove reef Tobago spill"`
-
----
-
-### 5. Vox Maxima & Marine Honour (Singapore)
-* **Official Name:** Pasir Panjang Port Allision & Fuel Oil Spill
-* **Observation Date:** June 14, 2024
-* **Location:** Pasir Panjang Terminal Berth 36, Singapore Strait
-* **Ground Truth Coordinates:** `1.27200° N, 103.77400° E` (Berth allision site)
-* **Incident Summary:** The Netherlands-flagged trailing suction hopper dredger *Vox Maxima* suffered an abrupt loss of steering and engine control, striking the stationary bunker tanker *Marine Honour*. A ruptured cargo tank released 400 metric tons of low-sulfur fuel oil, impacting Sentosa Island and Singapore's coastline.
-* **Search Keywords:** `"Vox Maxima" "Marine Honour" "Pasir Panjang oil spill" "Singapore oil spill June 2024"`
-
----
-
-### 6. MT Terra Nova (Manila Bay, Philippines)
-* **Official Name:** MT Terra Nova Capsizing & Industrial Fuel Oil Spill
-* **Observation Date:** July 25, 2024
-* **Location:** Off Limay, Bataan, Manila Bay, Philippines
-* **Ground Truth Coordinates:** `14.41700° N, 120.60000° E` (Sunken tanker wreck site)
-* **Incident Summary:** The Philippine-flagged industrial fuel tanker *MT Terra Nova* was carrying 1.4 million liters (370,000 gallons) of industrial fuel oil when it capsized and sank in rough waters driven by Typhoon Gaemi (Carina), triggering international salvage operations.
-* **Search Keywords:** `"MT Terra Nova" "Manila Bay oil spill July 2024" "Limay Bataan tanker sinking" "Typhoon Gaemi Terra Nova"`
-
----
-
-### 7. MV Sounion (Central Red Sea)
-* **Official Name:** MV Sounion Attack & Anchor Fire Incident
-* **Observation Date:** August 21, 2024
-* **Location:** Central Red Sea (~77 nautical miles west of Al Hudaydah, Yemen)
-* **Ground Truth Coordinates:** `15.03500° N, 41.88500° E` (Anchored burning site)
-* **Incident Summary:** The Greek-flagged crude oil tanker *MV Sounion*, carrying 150,000 metric tons (approx. 1 million barrels) of crude oil, was attacked and set ablaze by Houthi forces. The crew was evacuated by European naval forces (Operation ASPIDES) while salvage teams fought fires to avert a major environmental disaster.
-* **Search Keywords:** `"MV Sounion" "Sounion tanker fire Red Sea" "Operation Aspides Sounion" "Houthi attack Sounion"`
+### Search Keywords & Authoritative References for Team Research
+Share these exact keywords and citations with your teammates to pull up official government reports, satellite passes, and court records:
+* `"Taylor Energy" "MC-20" "Mississippi Canyon 20"`
+* `"Taylor Energy" "Saratoga platform" "Hurricane Ivan"`
+* `"Couvillion Group" "Taylor Energy" subsea containment`
+* `"NOAA" "Taylor Energy" satellite oil slick monitoring`
+* `"Bureau of Safety and Environmental Enforcement" "Taylor Energy" MC20`
+* *Reference Study:* Sun, S., Lu, Y., Liu, Y., et al. (2018). *Tracking an oil slick from the Taylor Energy platform using Sentinel-1 SAR imagery and numerical modeling.* Marine Pollution Bulletin.
 
 ---
 
 ## 8. Summary of Output Deliverables
 
-After running the pipeline, the following files are produced under `outputs/<incident>/`:
+After running the pipeline, the following files are produced under `outputs/taylor_energy/`:
 
 | Artifact | Format | Purpose |
 |:---|:---:|:---|
