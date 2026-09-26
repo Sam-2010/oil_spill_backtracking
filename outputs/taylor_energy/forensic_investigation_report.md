@@ -1,6 +1,6 @@
 # Maritime Oil Spill Forensic Investigation Report
 **Investigation Target:** TAYLOR_ENERGY Incident  
-**Report Generated (UTC):** 2026-09-26 16:57:40 UTC  
+**Report Generated (UTC):** 2026-09-26 17:04:12 UTC  
 **Classification:** Official Forensic Investigation & Maritime Attribution Audit  
 **Forensic Integrity Hash:** SHA-256 Verified Data Pipeline  
 
@@ -29,15 +29,16 @@ The initial surface slick polygon was identified via synthetic aperture radar (S
 | **Observation Timestamp** | `2023-11-17T23:54:16+00:00` | Satellite overpass capture time (UTC) |
 | **Observed Centroid** | `28.93471°N, -88.96548°W` | Geodetic center of detected surface oil |
 | **Slick Axis Length** | 2.67 km | Major physical spreading dimension |
-| **Leading Edge Width ($W_{head}$)** | 1780.1 m | Freshly surfaced / narrowest release apex |
-| **Trailing Edge Width ($W_{tail}$)** | 2136.1 m | Diffused / oldest surface oil footprint |
+| **Leading Edge Width (W_head)** | 1780.1 m | Freshly surfaced / narrowest release apex |
+| **Trailing Edge Width (W_tail)** | 2136.1 m | Diffused / oldest surface oil footprint |
 | **Principal Travel Orientation** | 42.8° | Directional orientation of slick elongation |
-| **Horizontal Diffusivity ($K_h$)** | 10.0 m²/s | Standard ocean sub-grid turbulent diffusion |
-| **Calculated Drift Age ($\Delta T$)** | **0.50 hours** | Solved via Fickian diffusion formula |
+| **Horizontal Diffusivity (Kh)** | 10.0 m²/s | Standard ocean sub-grid turbulent diffusion |
+| **Calculated Drift Age (ΔT)** | **0.50 hours** | Solved via Fickian diffusion formula |
 
 ### Diffusion Age Mathematical Formulation:
-$$\Delta T = \frac{W_{tail}^2 - W_{head}^2}{8 K_h}$$
-Substituting $W_{tail} = 2136.1\text{ m}$, $W_{head} = 1780.1\text{ m}$, and $K_h = 10.0\text{ m}^2/\text{s}$ yields an elapsed surface residence time of **0.50 hours**, constraining the release window to `2023-11-17T23:16:46+00:00` – `2023-11-17T23:24:16+00:00`.
+$$\Delta T = \frac{W_{\text{tail}}^2 - W_{\text{head}}^2}{8 K_h}$$
+* **Diffusion Profile:** $W_{\text{tail}} > W_{\text{head}}$ (widening tail indicates physical drift away from release apex).
+* **Numerical Solution:** Substituting $W_{\text{tail}} = 2136.1\text{ m}$, $W_{\text{head}} = 1780.1\text{ m}$, and $K_h = 10.0\text{ m}^2/\text{s}$ yields an elapsed surface residence time of **0.50 hours**, constraining the release window to `2023-11-17T23:16:46+00:00` – `2023-11-17T23:24:16+00:00`.
 
 ## 3. Hydrodynamic Reverse-Lagrangian Backtrack (Upstream Engine)
 

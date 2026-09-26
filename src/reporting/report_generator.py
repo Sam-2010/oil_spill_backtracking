@@ -180,15 +180,16 @@ def generate_forensic_report(
     md_lines.append(f"| **Observation Timestamp** | `{obs_time}` | Satellite overpass capture time (UTC) |")
     md_lines.append(f"| **Observed Centroid** | `{det_lat:.5f}°N, {det_lon:.5f}°W` | Geodetic center of detected surface oil |")
     md_lines.append(f"| **Slick Axis Length** | {slick_len_km:.2f} km | Major physical spreading dimension |")
-    md_lines.append(f"| **Leading Edge Width ($W_{{head}}$)** | {head_w_m:.1f} m | Freshly surfaced / narrowest release apex |")
-    md_lines.append(f"| **Trailing Edge Width ($W_{{tail}}$)** | {tail_w_m:.1f} m | Diffused / oldest surface oil footprint |")
+    md_lines.append(f"| **Leading Edge Width (W_head)** | {head_w_m:.1f} m | Freshly surfaced / narrowest release apex |")
+    md_lines.append(f"| **Trailing Edge Width (W_tail)** | {tail_w_m:.1f} m | Diffused / oldest surface oil footprint |")
     md_lines.append(f"| **Principal Travel Orientation** | {orient_deg:.1f}° | Directional orientation of slick elongation |")
-    md_lines.append(f"| **Horizontal Diffusivity ($K_h$)** | {diffusivity:.1f} m²/s | Standard ocean sub-grid turbulent diffusion |")
-    md_lines.append(f"| **Calculated Drift Age ($\Delta T$)** | **{elapsed_hrs:.2f} hours** | Solved via Fickian diffusion formula |")
+    md_lines.append(f"| **Horizontal Diffusivity (Kh)** | {diffusivity:.1f} m²/s | Standard ocean sub-grid turbulent diffusion |")
+    md_lines.append(f"| **Calculated Drift Age (ΔT)** | **{elapsed_hrs:.2f} hours** | Solved via Fickian diffusion formula |")
     md_lines.append("")
     md_lines.append("### Diffusion Age Mathematical Formulation:")
-    md_lines.append("$$\\Delta T = \\frac{W_{tail}^2 - W_{head}^2}{8 K_h}$$")
-    md_lines.append(f"Substituting $W_{{tail}} = {tail_w_m:.1f}\\text{{ m}}$, $W_{{head}} = {head_w_m:.1f}\\text{{ m}}$, "
+    md_lines.append("$$\\Delta T = \\frac{W_{\\text{tail}}^2 - W_{\\text{head}}^2}{8 K_h}$$")
+    md_lines.append(f"* **Diffusion Profile:** $W_{{\\text{{tail}}}} > W_{{\\text{{head}}}}$ (widening tail indicates physical drift away from release apex).")
+    md_lines.append(f"* **Numerical Solution:** Substituting $W_{{\\text{{tail}}}} = {tail_w_m:.1f}\\text{{ m}}$, $W_{{\\text{{head}}}} = {head_w_m:.1f}\\text{{ m}}$, "
                     f"and $K_h = {diffusivity:.1f}\\text{{ m}}^2/\\text{{s}}$ yields an elapsed surface residence time of "
                     f"**{elapsed_hrs:.2f} hours**, constraining the release window to `{t_start}` – `{t_end}`.")
     md_lines.append("")
@@ -716,6 +717,15 @@ def _build_html_report(
         .badge-high {{ background: #fed7d7; color: #9b2c2c; }}
         .badge-med {{ background: #feebc8; color: #7b341e; }}
         .badge-low {{ background: #c6f6d5; color: #22543d; }}
+        .math-box {{
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3182ce;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            font-size: 8.5pt;
+        }}
         .footer {{
             margin-top: 25px;
             border-top: 1px solid #e2e8f0;
@@ -801,15 +811,23 @@ def _build_html_report(
             <tr>
                 <td><strong>Transverse Dimensions</strong></td>
                 <td>Head: {head_w_m:.0f} m | Tail: {tail_w_m:.0f} m</td>
-                <td>Diffusion profile ($W_{{tail}} > W_{{head}}$ indicates ongoing drift)</td>
+                <td>Diffusion profile: <em>W</em><sub>tail</sub> &gt; <em>W</em><sub>head</sub> (widening downstream profile confirms active drift from source)</td>
             </tr>
             <tr>
                 <td><strong>Calculated Drift Age (&Delta;T)</strong></td>
                 <td><strong>{elapsed_hrs:.2f} hours</strong></td>
-                <td>Fickian turbulent diffusion formula ($K_h = {diffusivity:.0f}\text{{ m}}^2/\text{{s}}$)</td>
+                <td>Fickian turbulent diffusion model (turbulent diffusivity <em>K</em><sub>h</sub> = {diffusivity:.0f} m&sup2;/s)</td>
             </tr>
         </tbody>
     </table>
+
+    <div class="math-box">
+        <strong>Diffusion Age Formulation:</strong> &Delta;T = (<em>W</em><sub>tail</sub>&sup2; &minus; <em>W</em><sub>head</sub>&sup2;) &divide; (8 &times; <em>K</em><sub>h</sub>)<br>
+        <span style="font-size: 8pt; color: #4a5568;">
+            Substituting <em>W</em><sub>tail</sub> = {tail_w_m:.1f} m, <em>W</em><sub>head</sub> = {head_w_m:.1f} m, 
+            and <em>K</em><sub>h</sub> = {diffusivity:.1f} m&sup2;/s yields an elapsed residence time of <strong>{elapsed_hrs:.2f} hours</strong>.
+        </span>
+    </div>
 
     <h2>2. Hydrodynamic Backtrack Simulation (OpenDrift Upstream)</h2>
     <p style="font-size:9pt; margin-bottom:8px;">
@@ -828,12 +846,12 @@ def _build_html_report(
             <tr>
                 <td><strong>Ocean Surface Currents</strong></td>
                 <td>CMEMS Global Analysis</td>
-                <td>Hourly zonal ($u_o$) &amp; meridional ($v_o$) surface vectors</td>
+                <td>Hourly zonal (<em>u</em><sub>o</sub>) and meridional (<em>v</em><sub>o</sub>) surface vectors</td>
             </tr>
             <tr>
                 <td><strong>Stokes Wave Drift</strong></td>
                 <td>CMEMS Global Wave Model</td>
-                <td>Wave radiation stress ($VSDX, VSDY$)</td>
+                <td>Wave radiation stress vectors (<em>VSDX</em>, <em>VSDY</em>)</td>
             </tr>
             <tr>
                 <td><strong>Atmospheric Wind Leeway</strong></td>
@@ -843,7 +861,7 @@ def _build_html_report(
             <tr>
                 <td><strong>Sub-grid Dispersion</strong></td>
                 <td>Lagrangian Random Walk</td>
-                <td>Horizontal diffusivity $K_h = 10.0\text{{ m}}^2/\text{{s}}$</td>
+                <td>Horizontal turbulent diffusivity <em>K</em><sub>h</sub> = 10.0 m&sup2;/s</td>
             </tr>
         </tbody>
     </table>

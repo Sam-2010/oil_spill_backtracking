@@ -148,6 +148,15 @@
         .badge-high { background: #fed7d7; color: #9b2c2c; }
         .badge-med { background: #feebc8; color: #7b341e; }
         .badge-low { background: #c6f6d5; color: #22543d; }
+        .math-box {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3182ce;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            font-size: 8.5pt;
+        }
         .footer {
             margin-top: 25px;
             border-top: 1px solid #e2e8f0;
@@ -242,15 +251,23 @@
             <tr>
                 <td><strong>Transverse Dimensions</strong></td>
                 <td>Head: 1780 m | Tail: 2136 m</td>
-                <td>Diffusion profile ($W_{tail} > W_{head}$ indicates ongoing drift)</td>
+                <td>Diffusion profile: <em>W</em><sub>tail</sub> &gt; <em>W</em><sub>head</sub> (widening downstream profile confirms active drift from source)</td>
             </tr>
             <tr>
                 <td><strong>Calculated Drift Age (&Delta;T)</strong></td>
                 <td><strong>0.50 hours</strong></td>
-                <td>Fickian turbulent diffusion formula ($K_h = 10	ext{ m}^2/	ext{s}$)</td>
+                <td>Fickian turbulent diffusion model (turbulent diffusivity <em>K</em><sub>h</sub> = 10 m&sup2;/s)</td>
             </tr>
         </tbody>
     </table>
+
+    <div class="math-box">
+        <strong>Diffusion Age Formulation:</strong> &Delta;T = (<em>W</em><sub>tail</sub>&sup2; &minus; <em>W</em><sub>head</sub>&sup2;) &divide; (8 &times; <em>K</em><sub>h</sub>)<br>
+        <span style="font-size: 8pt; color: #4a5568;">
+            Substituting <em>W</em><sub>tail</sub> = 2136.1 m, <em>W</em><sub>head</sub> = 1780.1 m, 
+            and <em>K</em><sub>h</sub> = 10.0 m&sup2;/s yields an elapsed residence time of <strong>0.50 hours</strong>.
+        </span>
+    </div>
 
     <h2>2. Hydrodynamic Backtrack Simulation (OpenDrift Upstream)</h2>
     <p style="font-size:9pt; margin-bottom:8px;">
@@ -269,12 +286,12 @@
             <tr>
                 <td><strong>Ocean Surface Currents</strong></td>
                 <td>CMEMS Global Analysis</td>
-                <td>Hourly zonal ($u_o$) &amp; meridional ($v_o$) surface vectors</td>
+                <td>Hourly zonal (<em>u</em><sub>o</sub>) and meridional (<em>v</em><sub>o</sub>) surface vectors</td>
             </tr>
             <tr>
                 <td><strong>Stokes Wave Drift</strong></td>
                 <td>CMEMS Global Wave Model</td>
-                <td>Wave radiation stress ($VSDX, VSDY$)</td>
+                <td>Wave radiation stress vectors (<em>VSDX</em>, <em>VSDY</em>)</td>
             </tr>
             <tr>
                 <td><strong>Atmospheric Wind Leeway</strong></td>
@@ -284,7 +301,7 @@
             <tr>
                 <td><strong>Sub-grid Dispersion</strong></td>
                 <td>Lagrangian Random Walk</td>
-                <td>Horizontal diffusivity $K_h = 10.0	ext{ m}^2/	ext{s}$</td>
+                <td>Horizontal turbulent diffusivity <em>K</em><sub>h</sub> = 10.0 m&sup2;/s</td>
             </tr>
         </tbody>
     </table>
