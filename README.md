@@ -1,4 +1,4 @@
-# SPILL2SOURCE — Real-Time Oil-Spill Detection & Vessel Attribution
+# Krishna Sindhu — Real-Time Oil-Spill Detection & Vessel Attribution
 
 An automated pipeline that watches a sea area **live**: ingests real-time AIS
 traffic, real wind/wave/ocean-current fields, and Sentinel-1 SAR imagery;
@@ -259,3 +259,7 @@ Copernicus Data Space Ecosystem (Sentinel-1 catalogue & downloads), Sentinel Hub
 Process API (AOI rasters), Finnish Transport Infrastructure Agency Digitraffic
 (AIS, CC-BY 4.0), Open-Meteo (ECMWF/CMEMS-derived fields), Natural Earth
 (coastlines), SkyTruth Cerulean (historical slick detections).
+
+---
+
+**Krishna Sindhu** — *SAR Oil-Spill Intelligence for the Gulf of Finland*
