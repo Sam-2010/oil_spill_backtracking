@@ -1,0 +1,148 @@
+/* ═══════════════════════════════════════════════
+   MICRO-DETAILS: Auth Failed Bar, Demo Modal, Loading States
+   ═══════════════════════════════════════════════ */
+
+/* Full-width Auth Failed Bar - tactical/operational feel */
+.auth-failed-bar {
+  width: calc(100% + 72px);
+  margin-left: -36px;
+  margin-top: -20px;
+  margin-bottom: 20px;
+  padding: 10px 36px;
+  background: linear-gradient(90deg, rgba(245, 166, 35, 0.15) 0%, rgba(245, 166, 35, 0.08) 100%);
+  border-top: 1px solid rgba(245, 166, 35, 0.4);
+  border-bottom: 1px solid rgba(245, 166, 35, 0.2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #F5A623;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: authBarSlide 0.3s ease;
+}
+
+@keyframes authBarSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-failed-code {
+  color: #F5A623;
+  font-weight: 700;
+}
+
+.auth-failed-divider {
+  color: rgba(245, 166, 35, 0.5);
+}
+
+.auth-failed-log {
+  color: rgba(245, 166, 35, 0.85);
+}
+
+.auth-failed-time {
+  color: rgba(203, 213, 225, 0.6);
+  margin-left: auto;
+}
+
+/* Demo Request Modal */
+.demo-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 4, 9, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.2s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.demo-modal {
+  position: relative;
+  width: 400px;
+  max-width: 90vw;
+  background: #0D1117;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 2px solid #F5A623;
+  padding: 32px;
+  animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.demo-modal-title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  margin: 0 0 24px 0;
+}
+
+.demo-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.demo-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: rgba(203, 213, 225, 0.5);
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.demo-modal-close:hover {
+  color: #ffffff;
+}
+
+/* Demo Request Button */
+.demo-request-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #F5A623;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: color 0.15s ease;
+}
+
+.demo-request-btn:hover {
+  color: #FFB84D;
+}
+
+/* Loading state - text only, tactical */
+.loading-state {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: rgba(245, 166, 35, 0.9);
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Space-3d-canvas-container crosshair cursor for operational feel */
+.space-3d-canvas-container {
+  cursor: crosshair !important;
+}
