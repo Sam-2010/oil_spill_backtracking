@@ -13,7 +13,7 @@ import gdown
 st.set_page_config(page_title="Oil Spill Detection", layout="wide")
 
 MODEL_PATH = "unet_model_real.pt"
-GDRIVE_FILE_ID = "https://drive.google.com/file/d/1iaHXni9vxgrgADup8fV0UkE54Y7R0Urr/view?usp=sharing"  # <-- replace with your actual Drive file ID
+GDRIVE_FILE_ID = "1iaHXni9vxgrgADup8fV0UkE54Y7R0Urr"  # <-- replace with your actual Drive file ID
 
 @st.cache_resource
 def load_model():
