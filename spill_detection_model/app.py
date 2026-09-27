@@ -3,7 +3,6 @@ import torch
 import numpy as np
 from PIL import Image
 import segmentation_models_pytorch as smp
-import matplotlib.pyplot as plt
 import cv2
 import geojson
 from datetime import datetime, timezone
@@ -47,6 +46,13 @@ def predict(model, device, tensor, threshold=0.5):
         output = torch.sigmoid(model(tensor))
         mask = (output > threshold).float().cpu().numpy()[0, 0]
     return mask
+
+def make_overlay(display_img, mask, alpha=0.4):
+    img_rgb = np.stack([display_img]*3, axis=-1).astype(np.float32)
+    red_overlay = np.zeros_like(img_rgb)
+    red_overlay[..., 0] = 255  # red channel
+    blended = img_rgb * (1 - alpha * mask[..., None]) + red_overlay * (alpha * mask[..., None])
+    return blended.astype(np.uint8)
 
 def mask_to_polygons(mask, min_area=20, epsilon_factor=0.002):
     mask_uint8 = (mask * 255).astype(np.uint8)
@@ -122,12 +128,9 @@ if uploaded_file is not None:
         st.subheader("Predicted Spill Mask")
         st.image(mask, use_container_width=True, clamp=True)
     with col3:
-        st.subheader("Overlay")
-        fig, ax = plt.subplots()
-        ax.imshow(display_img, cmap='gray')
-        ax.imshow(mask, cmap='Reds', alpha=0.4)
-        ax.axis('off')
-        st.pyplot(fig)
+    st.subheader("Overlay")
+    overlay_img = make_overlay(display_img, mask)
+    st.image(overlay_img, use_container_width=True, clamp=True)
 
     st.metric("Spill coverage", f"{spill_pct:.2f}%")
     if spill_pct > 0.1:

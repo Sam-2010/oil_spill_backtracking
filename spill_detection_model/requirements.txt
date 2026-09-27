@@ -5,5 +5,4 @@ segmentation-models-pytorch
 opencv-python-headless
 geojson
 pillow
-matplotlib
 gdown
