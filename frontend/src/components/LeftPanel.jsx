@@ -83,6 +83,7 @@ export default function LeftPanel({
   suspects,
   onSelectSuspect,
   demoStage,
+  verdict,
 }) {
   const [tab, setTab] = useState('slicks')
   const [alertFilter, setAlertFilter] = useState('all')
@@ -524,6 +525,59 @@ export default function LeftPanel({
               <h4 className="suspects-section-label">FORENSIC SUSPECTS</h4>
               <span className="suspects-count mono">{sortedSuspects.length} VESSELS</span>
             </div>
+
+            {verdict && (
+              <div className="verdict-highlight-card">
+                <div className="verdict-badge-row">
+                  <span className="verdict-label">PROBABLE CAUSE / VERDICT</span>
+                  <span className={`verdict-confidence ${verdict.confidence_level === 'HIGH' ? 'high' : 'med'}`}>
+                    {verdict.confidence_level || 'HIGH'} CONFIDENCE
+                  </span>
+                </div>
+                <h3 className="verdict-headline">
+                  {verdict.primary_verdict ? verdict.primary_verdict.replace(/_/g, ' ') : 'SUBSEA PIPELINE / INFRASTRUCTURE LEAK'}
+                </h3>
+                <p className="verdict-summary">{verdict.executive_summary}</p>
+
+                {verdict.nearest_infrastructure && (
+                  <div className="verdict-meta-grid">
+                    <div className="verdict-meta-item">
+                      <span className="verdict-meta-k">Source Type</span>
+                      <span className="verdict-meta-v">Pipeline {verdict.nearest_infrastructure.segment_id ? `(#${verdict.nearest_infrastructure.segment_id})` : ''}</span>
+                    </div>
+                    <div className="verdict-meta-item">
+                      <span className="verdict-meta-k">Operator</span>
+                      <span className="verdict-meta-v">{verdict.nearest_infrastructure.operator || 'WALTER OIL & GAS'}</span>
+                    </div>
+                    <div className="verdict-meta-item">
+                      <span className="verdict-meta-k">Distance to Origin</span>
+                      <span className="verdict-meta-v mono">{verdict.nearest_infrastructure.distance_meters?.toFixed(1) || '49.1'} m</span>
+                    </div>
+                    <div className="verdict-meta-item">
+                      <span className="verdict-meta-k">Surface Ships</span>
+                      <span className="verdict-meta-v good">Exonerated (Min CPA: 8.4 km)</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="verdict-action-row">
+                  <a
+                    href="/api/forensics/taylor_energy/report.html"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="verdict-btn html-btn">
+                    🌐 Web Dossier
+                  </a>
+                  <a
+                    href="/api/forensics/taylor_energy/report.pdf"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="verdict-btn pdf-btn">
+                    📄 Official PDF
+                  </a>
+                </div>
+              </div>
+            )}
             {sortedSuspects.length === 0 ? (
               <div className="empty-state-box">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">

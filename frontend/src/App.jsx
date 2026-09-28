@@ -388,6 +388,7 @@ export default function App() {
             onScanScene={scanScene}
             onSelectVessel={selectVessel}
             suspects={demoData?.suspects}
+            verdict={demoData?.dossier?.forensic_verdict}
             demoStage={demoStage}
           />
         )}
