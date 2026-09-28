@@ -601,6 +601,7 @@ export default function LeftPanel({
                         onClick={() => {
                           setExpandedSuspect(isExpanded ? null : p?.mmsi)
                           if (onSelectSuspect) onSelectSuspect(p)
+                          if (onSelectVessel && p?.mmsi) onSelectVessel(p.mmsi)
                           // Fly to suspect location
                           const coords = s.geometry?.coordinates
                           if (coords) {

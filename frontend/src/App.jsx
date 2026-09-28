@@ -239,14 +239,39 @@ export default function App() {
     setVesselDetails(null)
     if (!mmsi) return
     setRightPanelOpen(true)
+
+    // Check if it's an evaluated suspect from demo data for immediate rich telemetry
+    const demoSuspect = demoData?.suspects?.features?.find(f => f.properties?.mmsi === mmsi)
+    if (demoSuspect) {
+      const p = demoSuspect.properties
+      const c = demoSuspect.geometry?.coordinates || []
+      setVesselDetails({
+        mmsi: p.mmsi,
+        name: p.vessel_name || `MMSI ${p.mmsi}`,
+        flag: 'GULF OF MEXICO',
+        type_label: `Type ${p.vessel_type || 'Commercial'} · ${p.suspicion_level} Suspicion (${p.total_score}%)`,
+        call_sign: p.callsign || '—',
+        live: {
+          lat: c[1],
+          lon: c[0],
+          sog: p.speed_knots,
+          cog: p.course_deg,
+          ts: p.cpa_timestamp_utc ? Math.floor(new Date(p.cpa_timestamp_utc).getTime() / 1000) : null,
+        },
+        audit_rationale: p.audit_rationale,
+      })
+    }
+
     getJSON(`/api/vessels/${mmsi}/details`)
-      .then(setVesselDetails)
+      .then((d) => {
+        if (d && Object.keys(d).length) setVesselDetails(d)
+      })
       .catch(() => {})
     getJSON(`/api/vessels/${mmsi}/track?hours=18`)
       .then((tr) => window.dispatchEvent(
         new CustomEvent('vessel-track', { detail: tr })))
       .catch(() => {})
-  }, [])
+  }, [demoData])
 
   const resetAOI = useCallback(() => {
     window.dispatchEvent(new CustomEvent('reset-map-view'))

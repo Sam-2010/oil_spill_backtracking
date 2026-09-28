@@ -70,7 +70,7 @@ const EMPTY = { type: 'FeatureCollection', features: [] }
 const OVERLAY_ORDER = [
   'risk-fill', 'corridor-fill', 'slick-fill', 'slick-line', 'cone-line',
   'footprint-fill', 'footprint-line', 'drift-back', 'drift-fwd',
-  'track-line', 'track-start', 'vessels', 'suspects',
+  'track-line', 'track-start', 'vessels', 'suspects-halo', 'suspects',
 ]
 
 function hydroCoord(lat, lon) {
@@ -236,25 +236,40 @@ function addOverlays(map) {
     },
   })
 
-  // Suspects layer - colored by suspicion_level, radius scaled by total_score
+  // Suspects outer halo / glow layer
   layer({
-    id: 'suspects', type: 'circle', source: 's-suspects',
+    id: 'suspects-halo', type: 'circle', source: 's-suspects',
     paint: {
-      'circle-radius': ['interpolate', ['linear'], ['get', 'total_score'], 0, 6, 100, 18],
+      'circle-radius': ['interpolate', ['linear'], ['get', 'total_score'], 0, 10, 50, 16, 100, 26],
       'circle-color': ['case',
         ['==', ['get', 'suspicion_level'], 'HIGH'], '#EF4444',
         ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#F59E0B',
         '#10B981'
       ],
-      'circle-opacity': 0.9,
-      'circle-stroke-width': 2,
+      'circle-opacity': 0.35,
+      'circle-stroke-width': 1.5,
       'circle-stroke-color': ['case',
-        ['==', ['get', 'is_dark_ship'], true], '#ffffff',
-        ['==', ['get', 'suspicion_level'], 'HIGH'], '#7f1d1d',
-        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#92400e',
-        '#065f46'
+        ['==', ['get', 'suspicion_level'], 'HIGH'], '#EF4444',
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#F59E0B',
+        '#10B981'
       ],
-      'circle-stroke-dasharray': ['case', ['==', ['get', 'is_dark_ship'], true], [4, 2], ['literal', []]],
+      'circle-stroke-opacity': 0.7,
+    },
+  })
+
+  // Suspects core marker layer - colored by suspicion_level, radius scaled by total_score
+  layer({
+    id: 'suspects', type: 'circle', source: 's-suspects',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['get', 'total_score'], 0, 5, 50, 8, 100, 14],
+      'circle-color': ['case',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], '#EF4444',
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#F59E0B',
+        '#10B981'
+      ],
+      'circle-opacity': 0.95,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#FFFFFF',
     },
   })
 
@@ -406,6 +421,7 @@ export default function MapView({
   const readyRef = useRef(false)
   const popupRef = useRef(null)
   const labelsRef = useRef([])
+  const suspectMarkersRef = useRef([])
   const pendingFocusRef = useRef(null)
 
   // Latest props mirrored into a ref so the one-shot map effect and the async
@@ -451,6 +467,11 @@ export default function MapView({
   const clearLabels = () => {
     labelsRef.current.forEach((m) => m.remove())
     labelsRef.current = []
+  }
+
+  const clearSuspectMarkers = () => {
+    suspectMarkersRef.current.forEach((m) => m.remove())
+    suspectMarkersRef.current = []
   }
 
   const addLabel = (map, lngLat, text, anchor = 'left') => {
@@ -722,7 +743,28 @@ export default function MapView({
       ['vessels', (p) => `${escapeHtml(p.name || `MMSI ${p.mmsi}`)} · ${Math.round(p.sog ?? 0)} kn`],
       ['slick-fill', (p) => `Slick #${escapeHtml(p.id)} · ${escapeHtml(p.area_km2)} km²`],
       ['risk-fill', (p) => `Spill risk ${(Number(p.p) * 100).toFixed(0)}%`],
-      ['suspects', (p) => `${escapeHtml(p.vessel_name || `MMSI ${p.mmsi}`)} · Score: ${p.total_score}% · ${p.suspicion_level}`],
+      ['suspects', (p) => `
+        <div style="font-family: var(--font-mono); font-size: 11px;">
+          <div style="font-weight: 700; color: #fff; margin-bottom: 2px;">🚢 ${escapeHtml(p.vessel_name || `MMSI ${p.mmsi}`)}</div>
+          <div style="color: ${p.suspicion_level === 'HIGH' ? '#EF4444' : p.suspicion_level === 'MEDIUM' ? '#F59E0B' : '#10B981'}; font-weight: 600;">
+            ${p.suspicion_level} SUSPICION · ${Number(p.total_score).toFixed(1)}%
+          </div>
+          <div style="color: #94A3B8; font-size: 10px; margin-top: 2px;">
+            CPA: ${(Number(p.cpa_distance_meters) / 1000).toFixed(1)} km · ${escapeHtml(p.speed_knots)} kn
+          </div>
+        </div>
+      `],
+      ['suspects-halo', (p) => `
+        <div style="font-family: var(--font-mono); font-size: 11px;">
+          <div style="font-weight: 700; color: #fff; margin-bottom: 2px;">🚢 ${escapeHtml(p.vessel_name || `MMSI ${p.mmsi}`)}</div>
+          <div style="color: ${p.suspicion_level === 'HIGH' ? '#EF4444' : p.suspicion_level === 'MEDIUM' ? '#F59E0B' : '#10B981'}; font-weight: 600;">
+            ${p.suspicion_level} SUSPICION · ${Number(p.total_score).toFixed(1)}%
+          </div>
+          <div style="color: #94A3B8; font-size: 10px; margin-top: 2px;">
+            CPA: ${(Number(p.cpa_distance_meters) / 1000).toFixed(1)} km · ${escapeHtml(p.speed_knots)} kn
+          </div>
+        </div>
+      `],
     ]
     HOVER.forEach(([id, fmt]) => {
       map.on('mousemove', id, (e) => {
@@ -746,19 +788,20 @@ export default function MapView({
       if (p) cbRef.current.onSelectSlick(p.id)
     }
     const onSuspectClick = (e) => {
-      const p = e.features?.[0]?.properties
+      const f = e.features?.[0]
+      const p = f?.properties
+      const coords = f?.geometry?.coordinates
       if (p) {
-        // Dispatch fly-to event for suspect vessel
-        window.dispatchEvent(new CustomEvent('fly-to', {
-          detail: { lon: p.lon || p.longitude || p.coordinates?.[0], lat: p.lat || p.latitude || p.coordinates?.[1] }
-        }))
-        // Also select the vessel if MMSI available
+        if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+          map.flyTo({ center: coords, zoom: 11.5, duration: 1200 })
+        }
         if (p.mmsi) cbRef.current.onSelectVessel(p.mmsi)
       }
     }
     map.on('click', 'vessels', onVesselClick)
     map.on('click', 'slick-fill', onSlickClick)
     map.on('click', 'suspects', onSuspectClick)
+    map.on('click', 'suspects-halo', onSuspectClick)
 
     // --- coordinate readout -------------------------------------------------
     const strip = document.getElementById('coord-strip')
@@ -771,7 +814,7 @@ export default function MapView({
       }
     })
     map.on('mouseout', () => {
-      if (strip) strip.textContent = '—′ —′'
+      if (!strip) strip.textContent = '—′ —′'
     })
 
     // --- app-level events ---------------------------------------------------
@@ -782,7 +825,7 @@ export default function MapView({
       else pendingFocusRef.current = () => focusTrack(e.detail)
     }
     const onFly = (e) => {
-      map.flyTo({ center: [e.detail.lon, e.detail.lat], zoom: 10, duration: 1400 })
+      map.flyTo({ center: [e.detail.lon, e.detail.lat], zoom: 11.5, duration: 1400 })
     }
     const onReset = () => {
       map.flyTo({
@@ -799,6 +842,7 @@ export default function MapView({
       window.removeEventListener('fly-to', onFly)
       window.removeEventListener('reset-map-view', onReset)
       clearLabels()
+      clearSuspectMarkers()
       popup.remove()
       readyRef.current = false
       mapRef.current = null
@@ -843,7 +887,7 @@ export default function MapView({
     applyData()
   }, [vessels, showVessels, slicks, riskOn, riskData, applyData])
 
-  // Demo flow: inject pre-run detection GeoJSON and fly to its bounds
+  // Demo flow: inject pre-run detection GeoJSON and fly to encompass detection and candidate ships
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
@@ -854,12 +898,20 @@ export default function MapView({
     const detectionData = demoDetection?.type === 'FeatureCollection' ? demoDetection : fc(demoDetection?.features || [demoDetection])
     src?.setData(detectionData)
 
-    // Fly to detection bounds with padding
+    // Fly to detection bounds with padding, extending to include top suspect ships
     const bounds = getBoundsFromGeoJSON(detectionData)
     if (bounds) {
-      map.fitBounds(bounds, { padding: 80, maxZoom: 12, duration: 1200 })
+      if (demoSuspects?.features?.length) {
+        demoSuspects.features.slice(0, 5).forEach((f) => {
+          const coords = f.geometry?.coordinates
+          if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+            bounds.extend(coords)
+          }
+        })
+      }
+      map.fitBounds(bounds, { padding: 90, maxZoom: 11, duration: 1400 })
     }
-  }, [demoDetection])
+  }, [demoDetection, demoSuspects])
 
   useEffect(() => {
     applyData()
@@ -1023,18 +1075,63 @@ export default function MapView({
     }
   }, [demoCorridor, corridorHours, demoOrigin])
 
-  // --- Suspects layer -------------------------------------------------------
+  // --- Suspects layer & Interactive Ship Markers ----------------------------
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
     const src = map.getSource('s-suspects')
-    if (!src) return
+    clearSuspectMarkers()
+
     if (demoSuspects?.features?.length) {
-      src.setData(demoSuspects)
+      if (src) src.setData(demoSuspects)
+
+      // Add high-visibility tactical ship markers
+      demoSuspects.features.forEach((f, idx) => {
+        const coords = f.geometry?.coordinates
+        if (!coords || !Number.isFinite(coords[0]) || !Number.isFinite(coords[1])) return
+
+        const p = f.properties || {}
+        const level = (p.suspicion_level || 'LOW').toLowerCase()
+        const name = p.vessel_name || `MMSI ${p.mmsi}`
+        const score = Number(p.total_score || 0).toFixed(1)
+        const rank = idx + 1
+        const isTop = rank <= 3
+        const course = Math.round(p.course_deg || 0)
+        const speed = Number(p.speed_knots || 0).toFixed(1)
+        const distKm = p.cpa_distance_meters ? (p.cpa_distance_meters / 1000).toFixed(1) : '—'
+
+        const el = document.createElement('div')
+        el.className = `suspect-ship-marker ${level} ${isTop ? 'top-rank' : ''} ${vesselMmsi === p.mmsi ? 'selected' : ''}`
+        el.dataset.mmsi = String(p.mmsi)
+        el.title = `${name} (#${rank})\nScore: ${score}%\nCPA: ${distKm} km\nSpeed: ${speed} kn · Heading: ${course}°`
+        el.innerHTML = `
+          <div class="ship-marker-badge">
+            <span class="ship-marker-rank">#${rank}</span>
+            <span class="ship-marker-icon">🚢</span>
+            <span class="ship-marker-title">${escapeHtml(name)}</span>
+            <span class="ship-marker-score mono">${score}%</span>
+            <span class="ship-marker-heading" title="Heading ${course}°" style="transform: rotate(${course}deg);">▲</span>
+          </div>
+          <div class="ship-marker-stem"></div>
+          <div class="ship-marker-dot"></div>
+        `
+
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation()
+          map.flyTo({ center: coords, zoom: 11.5, duration: 1000 })
+          if (p.mmsi) cbRef.current.onSelectVessel(p.mmsi)
+        })
+
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(coords)
+          .addTo(map)
+
+        suspectMarkersRef.current.push(marker)
+      })
     } else {
-      src.setData(EMPTY)
+      if (src) src.setData(EMPTY)
     }
-  }, [demoSuspects])
+  }, [demoSuspects, vesselMmsi])
 
   // Playback animation
   useEffect(() => {

@@ -626,3 +626,157 @@
 .verdict-btn.pdf-btn:hover {
   background: rgba(239, 68, 68, 0.25);
 }
+
+/* ═══════════════════════════════════════════════
+   SUSPECT SHIP MARKERS & MAP PINS
+   ═══════════════════════════════════════════════ */
+.suspect-ship-marker {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto !important;
+  transform: translateZ(0);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), z-index 0.2s ease;
+  z-index: 15;
+  user-select: none;
+}
+
+.suspect-ship-marker:hover {
+  transform: scale(1.15) translateY(-3px);
+  z-index: 60;
+}
+
+.suspect-ship-marker.top-rank {
+  z-index: 25;
+}
+
+.suspect-ship-marker.selected {
+  transform: scale(1.22) translateY(-4px);
+  z-index: 70;
+}
+
+.ship-marker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(8, 14, 24, 0.94);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75);
+  white-space: nowrap;
+}
+
+.suspect-ship-marker.high .ship-marker-badge {
+  border-color: rgba(239, 68, 68, 0.6);
+  border-left: 3px solid #EF4444;
+}
+
+.suspect-ship-marker.medium .ship-marker-badge {
+  border-color: rgba(245, 158, 11, 0.6);
+  border-left: 3px solid #F59E0B;
+}
+
+.suspect-ship-marker.low .ship-marker-badge {
+  border-color: rgba(16, 185, 129, 0.45);
+  border-left: 3px solid #10B981;
+}
+
+.suspect-ship-marker.selected .ship-marker-badge {
+  border-color: #38BDF8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.65);
+}
+
+.ship-marker-rank {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  color: #94A3B8;
+}
+
+.suspect-ship-marker.high .ship-marker-rank { color: #EF4444; }
+.suspect-ship-marker.medium .ship-marker-rank { color: #F59E0B; }
+.suspect-ship-marker.low .ship-marker-rank { color: #10B981; }
+
+.ship-marker-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.ship-marker-title {
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 11px;
+  font-weight: 700;
+  color: #F8FAFC;
+  letter-spacing: 0.02em;
+}
+
+.ship-marker-score {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #E2E8F0;
+}
+
+.suspect-ship-marker.high .ship-marker-score {
+  background: rgba(239, 68, 68, 0.25);
+  color: #FCA5A5;
+}
+
+.suspect-ship-marker.medium .ship-marker-score {
+  background: rgba(245, 158, 11, 0.25);
+  color: #FDE68A;
+}
+
+.suspect-ship-marker.low .ship-marker-score {
+  background: rgba(16, 185, 129, 0.2);
+  color: #A7F3D0;
+}
+
+.ship-marker-heading {
+  font-size: 9px;
+  color: #94A3B8;
+  display: inline-block;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.ship-marker-stem {
+  width: 2px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.suspect-ship-marker.high .ship-marker-stem { background: #EF4444; }
+.suspect-ship-marker.medium .ship-marker-stem { background: #F59E0B; }
+.suspect-ship-marker.low .ship-marker-stem { background: #10B981; }
+
+.ship-marker-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+}
+
+.suspect-ship-marker.high .ship-marker-dot { background: #EF4444; }
+.suspect-ship-marker.medium .ship-marker-dot { background: #F59E0B; }
+.suspect-ship-marker.low .ship-marker-dot { background: #10B981; }
+
+.suspect-ship-marker.selected .ship-marker-dot {
+  background: #38BDF8;
+  box-shadow: 0 0 10px #38BDF8;
+  animation: markerPulse 1.5s infinite;
+}
+
+@keyframes markerPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
+  70% { transform: scale(1.3); box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(56, 189, 248, 0); }
+}
+
