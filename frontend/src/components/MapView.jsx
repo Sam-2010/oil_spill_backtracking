@@ -68,7 +68,8 @@ const EMPTY = { type: 'FeatureCollection', features: [] }
 // Overlay draw order, bottom → top. The basemap is re-inserted below the first
 // of these that exists, so switching basemap never reshuffles the overlays.
 const OVERLAY_ORDER = [
-  'risk-fill', 'corridor-fill', 'slick-fill', 'slick-line', 'cone-line',
+  'risk-fill', 'pipelines-glow', 'pipelines-line', 'pipelines-culprit',
+  'corridor-fill', 'slick-fill', 'slick-line', 'cone-line',
   'footprint-fill', 'footprint-line', 'drift-back', 'drift-fwd',
   'track-line', 'track-start', 'vessels', 'suspects-halo', 'suspects',
 ]
@@ -165,7 +166,7 @@ function addOverlays(map) {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY })
   }
   ;['s-risk', 's-slicks', 's-vessels', 's-cone', 's-footprint',
-    's-back', 's-fwd', 's-track', 's-track-start', 's-suspects', 's-corridor'].forEach(src)
+    's-back', 's-fwd', 's-track', 's-track-start', 's-suspects', 's-corridor', 's-pipelines'].forEach(src)
 
   const layer = (def) => {
     if (!map.getLayer(def.id)) map.addLayer(def)
@@ -174,6 +175,45 @@ function addOverlays(map) {
   layer({
     id: 'risk-fill', type: 'fill', source: 's-risk',
     paint: { 'fill-color': C.amber, 'fill-opacity': ['get', 'o'] },
+  })
+
+  // Pipelines underglow
+  layer({
+    id: 'pipelines-glow', type: 'line', source: 's-pipelines',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': ['case', ['==', ['get', 'is_culprit'], true], '#FF3B30', '#00E5FF'],
+      'line-width': ['case', ['==', ['get', 'is_culprit'], true], 8, 3.5],
+      'line-opacity': ['case', ['==', ['get', 'is_culprit'], true], 0.45, 0.18],
+      'line-blur': 2,
+    },
+  })
+
+  // Pipelines base line
+  layer({
+    id: 'pipelines-line', type: 'line', source: 's-pipelines',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': ['case',
+        ['==', ['get', 'is_culprit'], true], '#FF3B30',
+        ['==', ['get', 'product'], 'GAS'], '#38BDF8',
+        '#00E5FF'
+      ],
+      'line-width': ['case', ['==', ['get', 'is_culprit'], true], 3.2, 1.4],
+      'line-opacity': ['case', ['==', ['get', 'is_culprit'], true], 1.0, 0.75],
+    },
+  })
+
+  // Ruptured culprit pipeline highlight
+  layer({
+    id: 'pipelines-culprit', type: 'line', source: 's-pipelines',
+    filter: ['==', ['get', 'is_culprit'], true],
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': '#FF3B30',
+      'line-width': 4.5,
+      'line-opacity': 1.0,
+    },
   })
   layer({
     id: 'slick-fill', type: 'fill', source: 's-slicks',
@@ -401,7 +441,10 @@ export default function MapView({
   vesselMmsi,
   riskOn,
   riskData,
-  showVessels,
+  showVessels = true,
+  onToggleVessels,
+  showPipelines = true,
+  onTogglePipelines,
   basemapKey,
   projection = 'globe',
   leftPanelOpen,
@@ -410,10 +453,12 @@ export default function MapView({
   onSelectVessel,
   demoDetection,
   flowOn = false,
+  onToggleFlow,
   flowOrigin = null,
   demoCorridor = null,
   demoOrigin = null,
   demoSuspects = null,
+  demoPipelines = null,
   demoStage = 'idle',
 }) {
   const boxRef = useRef(null)
@@ -422,6 +467,7 @@ export default function MapView({
   const popupRef = useRef(null)
   const labelsRef = useRef([])
   const suspectMarkersRef = useRef([])
+  const culpritPipelineMarkerRef = useRef(null)
   const pendingFocusRef = useRef(null)
 
   // Latest props mirrored into a ref so the one-shot map effect and the async
@@ -765,6 +811,28 @@ export default function MapView({
           </div>
         </div>
       `],
+      ['pipelines-line', (p) => `
+        <div style="font-family: var(--font-mono); font-size: 11px;">
+          <div style="font-weight: 700; color: ${p.is_culprit ? '#FF3B30' : '#00E5FF'}; margin-bottom: 2px;">
+            ${p.is_culprit ? '⚡ PRIMARY LEAK SOURCE' : 'SUBSEA PIPELINE'}
+          </div>
+          <div style="color: #fff; font-weight: 600;">Segment #${p.segment_id} · ${escapeHtml(p.operator)}</div>
+          <div style="color: #94A3B8; font-size: 10px; margin-top: 2px;">
+            Product: ${p.product} · Size: ${p.diameter_inches}" · Status: ${p.status}
+            ${p.is_culprit ? '<br><span style="color:#FCA5A5; font-weight:600;">Distance to Origin: 49.1 m</span>' : ''}
+          </div>
+        </div>
+      `],
+      ['pipelines-culprit', (p) => `
+        <div style="font-family: var(--font-mono); font-size: 11px;">
+          <div style="font-weight: 700; color: #FF3B30; margin-bottom: 2px;">⚡ PRIMARY LEAK SOURCE (RUPTURED)</div>
+          <div style="color: #fff; font-weight: 600;">Walter Oil & Gas · Segment #${p.segment_id}</div>
+          <div style="color: #FCA5A5; font-size: 10px; margin-top: 2px;">
+            Diameter: ${p.diameter_inches}" · Product: ${p.product} · Status: ${p.status}<br>
+            Origin Proximity: 49.1 m (Zero ship intersection)
+          </div>
+        </div>
+      `],
     ]
     HOVER.forEach(([id, fmt]) => {
       map.on('mousemove', id, (e) => {
@@ -798,10 +866,17 @@ export default function MapView({
         if (p.mmsi) cbRef.current.onSelectVessel(p.mmsi)
       }
     }
+    const onPipelineClick = (e) => {
+      if (e.lngLat) {
+        map.flyTo({ center: [e.lngLat.lng, e.lngLat.lat], zoom: 12.5, duration: 1000 })
+      }
+    }
     map.on('click', 'vessels', onVesselClick)
     map.on('click', 'slick-fill', onSlickClick)
     map.on('click', 'suspects', onSuspectClick)
     map.on('click', 'suspects-halo', onSuspectClick)
+    map.on('click', 'pipelines-line', onPipelineClick)
+    map.on('click', 'pipelines-culprit', onPipelineClick)
 
     // --- coordinate readout -------------------------------------------------
     const strip = document.getElementById('coord-strip')
@@ -843,6 +918,10 @@ export default function MapView({
       window.removeEventListener('reset-map-view', onReset)
       clearLabels()
       clearSuspectMarkers()
+      if (culpritPipelineMarkerRef.current) {
+        culpritPipelineMarkerRef.current.remove()
+        culpritPipelineMarkerRef.current = null
+      }
       popup.remove()
       readyRef.current = false
       mapRef.current = null
@@ -1082,7 +1161,7 @@ export default function MapView({
     const src = map.getSource('s-suspects')
     clearSuspectMarkers()
 
-    if (demoSuspects?.features?.length) {
+    if (showVessels && demoSuspects?.features?.length) {
       if (src) src.setData(demoSuspects)
 
       // Add high-visibility tactical ship markers
@@ -1131,7 +1210,57 @@ export default function MapView({
     } else {
       if (src) src.setData(EMPTY)
     }
-  }, [demoSuspects, vesselMmsi])
+  }, [demoSuspects, showVessels, vesselMmsi])
+
+  // --- Subsea Pipelines Layer & Culprit Badge -----------------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const src = map.getSource('s-pipelines')
+    if (culpritPipelineMarkerRef.current) {
+      culpritPipelineMarkerRef.current.remove()
+      culpritPipelineMarkerRef.current = null
+    }
+
+    if (showPipelines && demoPipelines?.features?.length) {
+      if (src) src.setData(demoPipelines)
+
+      // Highlight Walter Oil & Gas segment 12712 with a tactical badge
+      const culpritFeat = demoPipelines.features.find((f) => f.properties?.is_culprit)
+      if (culpritFeat && culpritFeat.geometry?.coordinates?.length) {
+        const coordsList = culpritFeat.geometry.coordinates
+        // Find point closest to estimated origin (-88.9678, 28.93537)
+        let bestCoord = coordsList[0]
+        let minD = 9999
+        coordsList.forEach((c) => {
+          const d = Math.hypot(c[0] - (-88.9678), c[1] - 28.93537)
+          if (d < minD) { minD = d; bestCoord = c }
+        })
+
+        const el = document.createElement('div')
+        el.className = 'culprit-pipeline-marker'
+        el.title = 'Suspected Rupture: Walter Oil & Gas Segment #12712 (49.1m from Origin)'
+        el.innerHTML = `
+          <div class="culprit-pipeline-badge">
+            <span class="culprit-pipe-icon">⚡</span>
+            <span class="culprit-pipe-text">PIPELINE #12712 (LEAK ORIGIN)</span>
+          </div>
+          <div class="culprit-pipe-stem"></div>
+          <div class="culprit-pipe-dot"></div>
+        `
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation()
+          map.flyTo({ center: bestCoord, zoom: 13, duration: 1000 })
+        })
+
+        culpritPipelineMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(bestCoord)
+          .addTo(map)
+      }
+    } else {
+      if (src) src.setData(EMPTY)
+    }
+  }, [demoPipelines, showPipelines])
 
   // Playback animation
   useEffect(() => {
@@ -1194,6 +1323,8 @@ export default function MapView({
             <div><span className="sw fwd" /> Forward Forecast Cone</div>
             <div><span className="sw ais" /> Live AIS Vessel Target</div>
             <div><span className="sw suspect" /> Ranked Suspect Vessel</div>
+            <div><span className="sw pipeline" /> Subsea Pipeline Grid</div>
+            <div><span className="sw pipe-culprit" /> Ruptured Pipeline #12712</div>
           </div>
         )}
       </div>
@@ -1219,31 +1350,62 @@ export default function MapView({
         </div>
       )}
 
-      {/* Corridor Time Slider UI */}
+      {/* Corridor Time Slider UI & Simulation Layer Controls */}
       {demoCorridor && (
         <div className={`corridor-controls ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
           <div className="corridor-header">
-            <span className="corridor-title">Backtrack Time</span>
+            <span className="corridor-title">Simulation Drift & Layers</span>
             <span className="corridor-hours mono">{corridorHours.toFixed(0)}h / {corridorMaxHours.current}h</span>
           </div>
-          <input
-            type="range"
-            className="corridor-slider"
-            min={0}
-            max={corridorMaxHours.current}
-            step={1}
-            value={corridorHours}
-            onChange={(e) => {
-              setCorridorHours(Number(e.target.value))
-              setIsPlaying(false)
-            }}
-          />
-          <button
-            className="corridor-play-btn"
-            onClick={() => setIsPlaying(p => !p)}
-          >
-            {isPlaying ? '⏸ Pause' : '▶ Play'}
-          </button>
+
+          {/* Quick simulation layer toggles: PIPELINES, SHIPS, CURRENTS */}
+          <div className="sim-layer-toggles">
+            <button
+              type="button"
+              className={`sim-toggle-pill ${showPipelines ? 'active' : ''}`}
+              onClick={onTogglePipelines}
+              title="Toggle Subsea Pipelines (Walter Oil & Gas #12712 leak line)">
+              <span className="pill-dot pipeline-dot" />
+              <span>PIPELINES {showPipelines ? 'ON' : 'OFF'}</span>
+            </button>
+            <button
+              type="button"
+              className={`sim-toggle-pill ${showVessels ? 'active' : ''}`}
+              onClick={onToggleVessels}
+              title="Toggle Candidate Ships & AIS Positions">
+              <span className="pill-dot ship-dot" />
+              <span>SHIPS {showVessels ? 'ON' : 'OFF'}</span>
+            </button>
+            <button
+              type="button"
+              className={`sim-toggle-pill ${flowOn ? 'active' : ''}`}
+              onClick={onToggleFlow}
+              title="Toggle Ocean Currents & Flow Field Vectors">
+              <span className="pill-dot current-dot" />
+              <span>CURRENTS {flowOn ? 'ON' : 'OFF'}</span>
+            </button>
+          </div>
+
+          <div className="corridor-slider-row">
+            <input
+              type="range"
+              className="corridor-slider"
+              min={0}
+              max={corridorMaxHours.current}
+              step={1}
+              value={corridorHours}
+              onChange={(e) => {
+                setCorridorHours(Number(e.target.value))
+                setIsPlaying(false)
+              }}
+            />
+            <button
+              className="corridor-play-btn"
+              onClick={() => setIsPlaying(p => !p)}
+            >
+              {isPlaying ? '⏸ Pause' : '▶ Play'}
+            </button>
+          </div>
         </div>
       )}
 

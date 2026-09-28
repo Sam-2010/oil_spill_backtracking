@@ -671,6 +671,14 @@ export default function LeftPanel({
             <span className="gis-key-sw suspect"></span>
             <span className="gis-key-label">Ranked Suspect Vessel</span>
           </div>
+          <div className="gis-key-item">
+            <span className="gis-key-sw pipeline"></span>
+            <span className="gis-key-label">Subsea Pipeline Grid</span>
+          </div>
+          <div className="gis-key-item">
+            <span className="gis-key-sw pipe-culprit"></span>
+            <span className="gis-key-label">Ruptured Pipeline #12712</span>
+          </div>
         </div>
       </div>
     </aside>

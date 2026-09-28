@@ -13,6 +13,8 @@ export default function Header({
   riskStatus,
   showVessels,
   onToggleVessels,
+  showPipelines = true,
+  onTogglePipelines,
   basemapKey,
   onSelectBasemap,
   basemaps,
@@ -185,6 +187,20 @@ export default function Header({
             </svg>
             <span>VESSELS</span>
           </button>
+
+          {/* Subsea Pipelines Toggle */}
+          {onTogglePipelines && (
+            <button
+              className={`header-btn ${showPipelines ? 'on' : ''}`}
+              onClick={onTogglePipelines}
+              title="Toggle Subsea Pipeline Infrastructure">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M4 14h6m4 0h6M10 14a2 2 0 1 0 4 0 2 2 0 1 0-4 0" />
+                <path d="M4 10h16M4 18h16" opacity="0.4" />
+              </svg>
+              <span>PIPELINES</span>
+            </button>
+          )}
 
           {/* Risk Layer Toggle */}
           <button

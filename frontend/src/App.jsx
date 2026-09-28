@@ -61,6 +61,7 @@ export default function App() {
   }, [])
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [showVessels, setShowVessels] = useState(true)
+  const [showPipelines, setShowPipelines] = useState(true)
   const [basemapKey, setBasemapKey] = useState('dark')
   const [projection, setProjection] = useState('globe')
   const toastTimerRef = useRef(null)
@@ -354,6 +355,9 @@ export default function App() {
           riskOn={riskOn}
           riskData={riskData}
           showVessels={showVessels}
+          onToggleVessels={() => setShowVessels((v) => !v)}
+          showPipelines={showPipelines}
+          onTogglePipelines={() => setShowPipelines((p) => !p)}
           basemapKey={basemapKey}
           projection={projection}
           leftPanelOpen={leftPanelOpen}
@@ -362,10 +366,12 @@ export default function App() {
           onSelectVessel={selectVessel}
           demoDetection={demoData?.detection}
           flowOn={flowOn}
+          onToggleFlow={() => setFlowOn((v) => !v)}
           flowOrigin={flowOrigin}
           demoCorridor={demoData?.corridor}
           demoOrigin={demoData?.origin}
           demoSuspects={demoData?.suspects}
+          demoPipelines={demoData?.pipelines}
           demoStage={demoStage}
         />
       </div>
@@ -378,6 +384,8 @@ export default function App() {
         riskStatus={riskStatusRef.current}
         showVessels={showVessels}
         onToggleVessels={() => setShowVessels((v) => !v)}
+        showPipelines={showPipelines}
+        onTogglePipelines={() => setShowPipelines((p) => !p)}
         basemapKey={basemapKey}
         onSelectBasemap={setBasemapKey}
         basemaps={BASEMAPS}
