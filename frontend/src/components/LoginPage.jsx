@@ -37,9 +37,24 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
     }, 1200)
   }
 
-  const handleFillDemo = () => {
-    setEmail('command@spill2source.io')
-    setPassword('maritime2026')
+  const [demoFilled, setDemoFilled] = useState(false)
+
+  const handleFillDemo = (autoSubmit = false) => {
+    const demoEmail = 'command@spill2source.io'
+    const demoPassword = 'maritime2026'
+    setEmail(demoEmail)
+    setPassword(demoPassword)
+    setError('')
+    setDemoFilled(true)
+    setTimeout(() => setDemoFilled(false), 2500)
+
+    if (autoSubmit && onLoginSuccess) {
+      setLoading(true)
+      setTimeout(() => {
+        setLoading(false)
+        onLoginSuccess({ email: demoEmail, role: 'Intelligence Officer' })
+      }, 700)
+    }
   }
 
   return (
@@ -178,9 +193,45 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
         </form>
 
         <div className="terminal-footer">
-          <button type="button" className="terminal-link" onClick={handleFillDemo}>
-            LOAD_DEMO_CREDENTIALS
-          </button>
+          <div className="demo-credentials-card">
+            <div className="demo-card-header">
+              <div className="demo-card-title-wrap">
+                <span className="demo-card-icon">⚡</span>
+                <span className="demo-card-title">DEMO CREDENTIALS</span>
+              </div>
+              <span className="demo-card-badge">ONE-CLICK ACCESS</span>
+            </div>
+            <div className="demo-card-creds">
+              <div className="demo-cred-row">
+                <span className="demo-cred-label">USER:</span>
+                <span className="demo-cred-val mono">command@spill2source.io</span>
+              </div>
+              <div className="demo-cred-row">
+                <span className="demo-cred-label">KEY:</span>
+                <span className="demo-cred-val mono">maritime2026</span>
+              </div>
+            </div>
+            <div className="demo-card-actions">
+              <button
+                type="button"
+                className={`demo-fill-btn ${demoFilled ? 'filled' : ''}`}
+                onClick={() => handleFillDemo(false)}
+                title="Autofill Demo Credentials into the login form"
+                disabled={loading}
+              >
+                <span>{demoFilled ? '✓ LOADED' : 'LOAD CREDENTIALS'}</span>
+              </button>
+              <button
+                type="button"
+                className="demo-instant-btn"
+                onClick={() => handleFillDemo(true)}
+                title="One-click instant login as Demo Operator"
+                disabled={loading}
+              >
+                <span>⚡ QUICK LOGIN</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
