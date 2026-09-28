@@ -746,6 +746,16 @@
   transition: transform 0.2s ease;
 }
 
+.ship-marker-speed {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  color: #94A3B8;
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
 .ship-marker-stem {
   width: 2px;
   height: 6px;
@@ -917,6 +927,13 @@
 .gis-key-sw.pipe-culprit {
   background: #FF3B30;
   box-shadow: 0 0 4px #FF3B30;
+}
+
+.sw.candidate-track,
+.gis-key-sw.candidate-track {
+  background: #F59E0B;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.6);
+  border-top: 2px dashed #EF4444;
 }
 
 

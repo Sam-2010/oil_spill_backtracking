@@ -71,6 +71,7 @@ const OVERLAY_ORDER = [
   'risk-fill', 'pipelines-glow', 'pipelines-line', 'pipelines-culprit',
   'corridor-fill', 'slick-fill', 'slick-line', 'cone-line',
   'footprint-fill', 'footprint-line', 'drift-back', 'drift-fwd',
+  'candidate-tracks-glow', 'candidate-tracks',
   'track-line', 'track-start', 'vessels', 'suspects-halo', 'suspects',
 ]
 
@@ -166,7 +167,7 @@ function addOverlays(map) {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY })
   }
   ;['s-risk', 's-slicks', 's-vessels', 's-cone', 's-footprint',
-    's-back', 's-fwd', 's-track', 's-track-start', 's-suspects', 's-corridor', 's-pipelines'].forEach(src)
+    's-back', 's-fwd', 's-candidate-tracks', 's-track', 's-track-start', 's-suspects', 's-corridor', 's-pipelines'].forEach(src)
 
   const layer = (def) => {
     if (!map.getLayer(def.id)) map.addLayer(def)
@@ -249,6 +250,45 @@ function addOverlays(map) {
     layout: { 'line-cap': 'butt', 'line-join': 'round' },
     paint: {
       'line-color': C.cyan, 'line-width': 2.2, 'line-opacity': 0.85,
+      'line-dasharray': [3, 2],
+    },
+  })
+
+  // Candidate vessel 18-hour historical transit tracks
+  layer({
+    id: 'candidate-tracks-glow', type: 'line', source: 's-candidate-tracks',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': ['case',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], '#EF4444',
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#F59E0B',
+        '#64748B'
+      ],
+      'line-width': ['case',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], 5,
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], 3.5,
+        2
+      ],
+      'line-opacity': 0.28,
+      'line-blur': 1.5,
+    },
+  })
+
+  layer({
+    id: 'candidate-tracks', type: 'line', source: 's-candidate-tracks',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': ['case',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], '#EF4444',
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#F59E0B',
+        '#94A3B8'
+      ],
+      'line-width': ['case',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], 2.4,
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], 1.8,
+        1.2
+      ],
+      'line-opacity': 0.85,
       'line-dasharray': [3, 2],
     },
   })
@@ -434,6 +474,76 @@ function computeFlowBbox(origin) {
   }
 }
 
+// Interpolate historical vessel coordinates, heading, and speed along its 18-hour NOAA AIS track
+function getVesselPositionAtHoursPrior(vesselData, targetHoursPrior) {
+  if (!vesselData || !vesselData.points || !vesselData.points.length) {
+    return null
+  }
+  const pts = vesselData.points
+  if (pts.length === 1) {
+    return {
+      lon: pts[0].lon,
+      lat: pts[0].lat,
+      sog: pts[0].sog ?? 0,
+      cog: pts[0].cog ?? 0,
+      hours_prior: pts[0].hours_prior ?? targetHoursPrior,
+    }
+  }
+
+  // points are ordered from earliest (largest hours_prior) to latest (smallest hours_prior)
+  const earliest = pts[0]
+  const latest = pts[pts.length - 1]
+
+  if (targetHoursPrior >= earliest.hours_prior) {
+    return {
+      lon: earliest.lon,
+      lat: earliest.lat,
+      sog: earliest.sog ?? 0,
+      cog: earliest.cog ?? 0,
+      hours_prior: earliest.hours_prior,
+    }
+  }
+  if (targetHoursPrior <= latest.hours_prior) {
+    return {
+      lon: latest.lon,
+      lat: latest.lat,
+      sog: latest.sog ?? 0,
+      cog: latest.cog ?? 0,
+      hours_prior: latest.hours_prior,
+    }
+  }
+
+  // Find segment [p1, p2] where p1.hours_prior >= targetHoursPrior >= p2.hours_prior
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p1 = pts[i]
+    const p2 = pts[i + 1]
+    if (p1.hours_prior >= targetHoursPrior && p2.hours_prior <= targetHoursPrior) {
+      const span = p1.hours_prior - p2.hours_prior
+      const t = span > 1e-6 ? (p1.hours_prior - targetHoursPrior) / span : 0
+      const lon = p1.lon + t * (p2.lon - p1.lon)
+      const lat = p1.lat + t * (p2.lat - p1.lat)
+      const sog = (p1.sog ?? 0) + t * ((p2.sog ?? 0) - (p1.sog ?? 0))
+
+      let cog1 = p1.cog ?? 0
+      let cog2 = p2.cog ?? 0
+      let diff = cog2 - cog1
+      if (diff > 180) diff -= 360
+      if (diff < -180) diff += 360
+      const cog = (cog1 + t * diff + 360) % 360
+
+      return { lon, lat, sog, cog, hours_prior: targetHoursPrior }
+    }
+  }
+
+  return {
+    lon: latest.lon,
+    lat: latest.lat,
+    sog: latest.sog ?? 0,
+    cog: latest.cog ?? 0,
+    hours_prior: latest.hours_prior,
+  }
+}
+
 export default function MapView({
   vessels,
   slicks,
@@ -458,6 +568,8 @@ export default function MapView({
   demoCorridor = null,
   demoOrigin = null,
   demoSuspects = null,
+  demoTracks = null,
+  demoTrajectories = null,
   demoPipelines = null,
   demoStage = 'idle',
 }) {
@@ -507,6 +619,7 @@ export default function MapView({
   const [legendOpen, setLegendOpen] = useState(true)
   const corridorRafRef = useRef(null)
   const corridorMaxHours = useRef(26)
+  const corridorInitRef = useRef(false)
 
   // MapLibre has no glyph server configured here, so the "always on" analysis
   // labels are HTML markers rather than symbol layers.
@@ -516,7 +629,10 @@ export default function MapView({
   }
 
   const clearSuspectMarkers = () => {
-    suspectMarkersRef.current.forEach((m) => m.remove())
+    suspectMarkersRef.current.forEach((item) => {
+      if (item?.marker) item.marker.remove()
+      else if (item?.remove) item.remove()
+    })
     suspectMarkersRef.current = []
   }
 
@@ -811,6 +927,17 @@ export default function MapView({
           </div>
         </div>
       `],
+      ['candidate-tracks', (p) => `
+        <div style="font-family: var(--font-mono); font-size: 11px;">
+          <div style="font-weight: 700; color: #fff; margin-bottom: 2px;">🚢 ${escapeHtml(p.vessel_name || `MMSI ${p.mmsi}`)}</div>
+          <div style="color: ${p.suspicion_level === 'HIGH' ? '#EF4444' : p.suspicion_level === 'MEDIUM' ? '#F59E0B' : '#10B981'}; font-weight: 600;">
+            18h HISTORICAL AIS TRACK · ${p.suspicion_level} SUSPICION (${Number(p.total_score).toFixed(1)}%)
+          </div>
+          <div style="color: #94A3B8; font-size: 10px; margin-top: 2px;">
+            Fixes: ${p.points_count || '—'} AIS positions recorded · Click to focus
+          </div>
+        </div>
+      `],
       ['pipelines-line', (p) => `
         <div style="font-family: var(--font-mono); font-size: 11px;">
           <div style="font-weight: 700; color: ${p.is_culprit ? '#FF3B30' : '#00E5FF'}; margin-bottom: 2px;">
@@ -871,10 +998,15 @@ export default function MapView({
         map.flyTo({ center: [e.lngLat.lng, e.lngLat.lat], zoom: 12.5, duration: 1000 })
       }
     }
+    const onCandidateTrackClick = (e) => {
+      const p = e.features?.[0]?.properties
+      if (p?.mmsi) cbRef.current.onSelectVessel(p.mmsi)
+    }
     map.on('click', 'vessels', onVesselClick)
     map.on('click', 'slick-fill', onSlickClick)
     map.on('click', 'suspects', onSuspectClick)
     map.on('click', 'suspects-halo', onSuspectClick)
+    map.on('click', 'candidate-tracks', onCandidateTrackClick)
     map.on('click', 'pipelines-line', onPipelineClick)
     map.on('click', 'pipelines-culprit', onPipelineClick)
 
@@ -1075,7 +1207,10 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !readyRef.current) return
-    if (!demoCorridor?.features?.length) return
+    if (!demoCorridor?.features?.length) {
+      corridorInitRef.current = false
+      return
+    }
 
     // Compute max hours from corridor data
     const allHours = demoCorridor.features
@@ -1084,8 +1219,9 @@ export default function MapView({
     if (allHours.length) {
       const maxH = Math.max(...allHours)
       corridorMaxHours.current = maxH
-      if (corridorHours === 0) {
+      if (!corridorInitRef.current) {
         setCorridorHours(maxH)
+        corridorInitRef.current = true
       }
     }
 
@@ -1096,7 +1232,7 @@ export default function MapView({
     }).map(f => {
       const h = f.properties?.hours_prior ?? 0
       // Older = more transparent; 0 hours = 0.5 opacity, max hours = 0.1
-      const opacity = 0.5 - (h / corridorMaxHours.current) * 0.4
+      const opacity = 0.5 - (h / (corridorMaxHours.current || 26)) * 0.4
       return {
         ...f,
         properties: { ...f.properties, opacity: Math.max(0.1, opacity) }
@@ -1154,6 +1290,84 @@ export default function MapView({
     }
   }, [demoCorridor, corridorHours, demoOrigin])
 
+  // --- Candidate vessel 18h historical transit tracks ------------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const src = map.getSource('s-candidate-tracks')
+    if (src) {
+      src.setData(showVessels && demoTracks?.features?.length ? demoTracks : EMPTY)
+    }
+  }, [demoTracks, showVessels])
+
+  // Helper to sync suspect ship markers and s-suspects GPU circles with the backtrack time
+  const updateSuspectPositions = useCallback((hHours) => {
+    const map = mapRef.current
+    if (!map || !readyRef.current || !showVessels) return
+    if (!suspectMarkersRef.current.length && !demoSuspects?.features?.length) return
+
+    // 1. Update interactive HTML markers
+    suspectMarkersRef.current.forEach((item) => {
+      const traj = demoTrajectories?.[item.mmsi] || demoTrajectories?.[String(item.mmsi)]
+      let coords = item.baseCoords
+      let course = item.baseCourse
+      let speed = item.baseSpeed
+      if (traj) {
+        const pos = getVesselPositionAtHoursPrior(traj, hHours)
+        if (pos && Number.isFinite(pos.lon) && Number.isFinite(pos.lat)) {
+          coords = [pos.lon, pos.lat]
+          course = Math.round(pos.cog)
+          speed = pos.sog.toFixed(1)
+        }
+      }
+      item.currentCoords = coords
+      if (item.marker) {
+        item.marker.setLngLat(coords)
+      }
+      if (item.headingEl) {
+        item.headingEl.style.transform = `rotate(${course}deg)`
+        item.headingEl.title = `Heading ${course}°`
+      }
+      if (item.speedEl) {
+        item.speedEl.textContent = `${speed} kn`
+      }
+      item.el.title = `${item.name} (#${item.rank})\nBacktrack Time: T-${hHours.toFixed(1)}h\nCoord: ${coords[1].toFixed(4)}°N, ${Math.abs(coords[0]).toFixed(4)}°W\nSpeed: ${speed} kn · Heading: ${course}°`
+    })
+
+    // 2. Update MapLibre s-suspects GeoJSON source (GPU circles)
+    const src = map.getSource('s-suspects')
+    if (src && demoSuspects?.features?.length) {
+      const updatedFeatures = demoSuspects.features.map((f) => {
+        const mmsi = f.properties?.mmsi
+        const traj = demoTrajectories?.[mmsi] || demoTrajectories?.[String(mmsi)]
+        if (traj) {
+          const pos = getVesselPositionAtHoursPrior(traj, hHours)
+          if (pos && Number.isFinite(pos.lon) && Number.isFinite(pos.lat)) {
+            return {
+              ...f,
+              geometry: { type: 'Point', coordinates: [pos.lon, pos.lat] },
+              properties: {
+                ...f.properties,
+                speed_knots: pos.sog.toFixed(1),
+                course_deg: Math.round(pos.cog),
+                current_lon: pos.lon,
+                current_lat: pos.lat,
+                hours_prior: hHours,
+              },
+            }
+          }
+        }
+        return f
+      })
+      src.setData({ type: 'FeatureCollection', features: updatedFeatures })
+    }
+  }, [demoTrajectories, demoSuspects, showVessels])
+
+  // Sync positions whenever corridorHours slider scrubs or plays
+  useEffect(() => {
+    updateSuspectPositions(corridorHours)
+  }, [corridorHours, updateSuspectPositions])
+
   // --- Suspects layer & Interactive Ship Markers ----------------------------
   useEffect(() => {
     const map = mapRef.current
@@ -1189,15 +1403,31 @@ export default function MapView({
             <span class="ship-marker-icon">🚢</span>
             <span class="ship-marker-title">${escapeHtml(name)}</span>
             <span class="ship-marker-score mono">${score}%</span>
+            <span class="ship-marker-speed mono">${speed} kn</span>
             <span class="ship-marker-heading" title="Heading ${course}°" style="transform: rotate(${course}deg);">▲</span>
           </div>
           <div class="ship-marker-stem"></div>
           <div class="ship-marker-dot"></div>
         `
 
+        const markerItem = {
+          marker: null,
+          el,
+          mmsi: p.mmsi,
+          name,
+          rank,
+          baseCoords: coords,
+          currentCoords: coords,
+          baseCourse: course,
+          baseSpeed: speed,
+          headingEl: el.querySelector('.ship-marker-heading'),
+          speedEl: el.querySelector('.ship-marker-speed'),
+        }
+
         el.addEventListener('click', (ev) => {
           ev.stopPropagation()
-          map.flyTo({ center: coords, zoom: 11.5, duration: 1000 })
+          const c = markerItem.currentCoords || coords
+          map.flyTo({ center: c, zoom: 11.5, duration: 1000 })
           if (p.mmsi) cbRef.current.onSelectVessel(p.mmsi)
         })
 
@@ -1205,12 +1435,16 @@ export default function MapView({
           .setLngLat(coords)
           .addTo(map)
 
-        suspectMarkersRef.current.push(marker)
+        markerItem.marker = marker
+        suspectMarkersRef.current.push(markerItem)
       })
+
+      // Sync initial positions with current corridorHours
+      updateSuspectPositions(corridorHours)
     } else {
       if (src) src.setData(EMPTY)
     }
-  }, [demoSuspects, showVessels, vesselMmsi])
+  }, [demoSuspects, showVessels, vesselMmsi, updateSuspectPositions])
 
   // --- Subsea Pipelines Layer & Culprit Badge -----------------------------
   useEffect(() => {
@@ -1262,7 +1496,7 @@ export default function MapView({
     }
   }, [demoPipelines, showPipelines])
 
-  // Playback animation
+  // Playback animation - smooth stepping through backtrack hours
   useEffect(() => {
     if (!isPlaying) {
       if (corridorRafRef.current) {
@@ -1278,11 +1512,14 @@ export default function MapView({
       const delta = now - lastTime
       if (delta > 200) { // Update every 200ms = 5 steps per second
         lastTime = now
-        setCorridorHours(h => {
-          const next = h + 1
-          if (next > corridorMaxHours.current) {
+        setCorridorHours((h) => {
+          if (h >= corridorMaxHours.current) {
             setIsPlaying(false)
             return corridorMaxHours.current
+          }
+          const next = Math.min(corridorMaxHours.current, Number((h + 0.5).toFixed(1)))
+          if (next >= corridorMaxHours.current) {
+            setIsPlaying(false)
           }
           return next
         })
@@ -1323,6 +1560,7 @@ export default function MapView({
             <div><span className="sw fwd" /> Forward Forecast Cone</div>
             <div><span className="sw ais" /> Live AIS Vessel Target</div>
             <div><span className="sw suspect" /> Ranked Suspect Vessel</div>
+            <div><span className="sw candidate-track" /> 18h Historical Track</div>
             <div><span className="sw pipeline" /> Subsea Pipeline Grid</div>
             <div><span className="sw pipe-culprit" /> Ruptured Pipeline #12712</div>
           </div>
@@ -1355,7 +1593,9 @@ export default function MapView({
         <div className={`corridor-controls ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
           <div className="corridor-header">
             <span className="corridor-title">Simulation Drift & Layers</span>
-            <span className="corridor-hours mono">{corridorHours.toFixed(0)}h / {corridorMaxHours.current}h</span>
+            <span className="corridor-hours mono">
+              {Number.isInteger(corridorHours) ? corridorHours : corridorHours.toFixed(1)}h / {corridorMaxHours.current}h
+            </span>
           </div>
 
           {/* Quick simulation layer toggles: PIPELINES, SHIPS, CURRENTS */}
@@ -1392,7 +1632,7 @@ export default function MapView({
               className="corridor-slider"
               min={0}
               max={corridorMaxHours.current}
-              step={1}
+              step={0.5}
               value={corridorHours}
               onChange={(e) => {
                 setCorridorHours(Number(e.target.value))
@@ -1401,7 +1641,12 @@ export default function MapView({
             />
             <button
               className="corridor-play-btn"
-              onClick={() => setIsPlaying(p => !p)}
+              onClick={() => {
+                if (!isPlaying && corridorHours >= corridorMaxHours.current) {
+                  setCorridorHours(0)
+                }
+                setIsPlaying((p) => !p)
+              }}
             >
               {isPlaying ? '⏸ Pause' : '▶ Play'}
             </button>

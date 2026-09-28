@@ -172,6 +172,12 @@ class Store:
             )
 
     def prune_positions(self, keep_seconds: float) -> None:
+        max_ts_row = self.one("SELECT MAX(ts) as max_ts FROM ais_positions")
+        if not max_ts_row or not max_ts_row["max_ts"]:
+            return
+        # If positions are from a historical incident/benchmark dataset, preserve them
+        if time.time() - max_ts_row["max_ts"] > 30 * 86400:
+            return
         cutoff = time.time() - keep_seconds
         self.exec("DELETE FROM ais_positions WHERE ts < ?", (cutoff,))
 

@@ -263,14 +263,38 @@ export default function App() {
       })
     }
 
+    // Check if demoData has pre-computed 18h backtrack trajectory
+    const demoTrackData = demoData?.trajectories?.[String(mmsi)]
+    if (demoTrackData && demoTrackData.points?.length > 1) {
+      const pts = demoTrackData.points.map(p => [p.lon, p.lat, p.ts, p.sog, p.cog])
+      const demoSuspect = demoData?.suspects?.features?.find(f => f.properties?.mmsi === mmsi)
+      const cpaTs = demoSuspect?.properties?.cpa_timestamp_utc
+      const tr = {
+        mmsi,
+        name: demoTrackData.name,
+        highlight_ts: cpaTs ? Math.floor(new Date(cpaTs).getTime() / 1000) : null,
+        points: pts
+      }
+      window.dispatchEvent(new CustomEvent('vessel-track', { detail: tr }))
+    }
+
     getJSON(`/api/vessels/${mmsi}/details`)
       .then((d) => {
         if (d && Object.keys(d).length) setVesselDetails(d)
       })
       .catch(() => {})
     getJSON(`/api/vessels/${mmsi}/track?hours=18`)
-      .then((tr) => window.dispatchEvent(
-        new CustomEvent('vessel-track', { detail: tr })))
+      .then((tr) => {
+        if (tr && tr.points?.length > 1) {
+          const demoSuspect = demoData?.suspects?.features?.find(f => f.properties?.mmsi === mmsi)
+          if (demoSuspect) {
+            tr.name = demoSuspect.properties?.vessel_name
+            const cpaTs = demoSuspect.properties?.cpa_timestamp_utc
+            if (cpaTs) tr.highlight_ts = Math.floor(new Date(cpaTs).getTime() / 1000)
+          }
+          window.dispatchEvent(new CustomEvent('vessel-track', { detail: tr }))
+        }
+      })
       .catch(() => {})
   }, [demoData])
 
@@ -371,6 +395,8 @@ export default function App() {
           demoCorridor={demoData?.corridor}
           demoOrigin={demoData?.origin}
           demoSuspects={demoData?.suspects}
+          demoTracks={demoData?.tracks}
+          demoTrajectories={demoData?.trajectories}
           demoPipelines={demoData?.pipelines}
           demoStage={demoStage}
         />

@@ -4,6 +4,8 @@ export async function loadDemoData() {
     { key: 'corridor', path: '/demo/corridor.geojson' },
     { key: 'origin', path: '/demo/origin.json' },
     { key: 'suspects', path: '/demo/suspects.geojson' },
+    { key: 'tracks', path: '/demo/tracks.geojson' },
+    { key: 'trajectories', path: '/demo/trajectories.json' },
     { key: 'pipelines', path: '/demo/pipelines.geojson' },
     { key: 'dossier', path: '/demo/dossier.json' },
   ];
