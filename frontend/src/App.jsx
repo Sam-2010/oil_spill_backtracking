@@ -7,11 +7,11 @@ import SlickDetail from './components/SlickDetail.jsx'
 import VesselCard from './components/VesselCard.jsx'
 import LoginPage from './components/LoginPage.jsx'
 import TelemetryStatusBar from './components/TelemetryStatusBar.jsx'
-import { loadDemoData } from './data/demoData.js'
+import { loadDemoData } from './demoData.js'
 
-// Demo pacing (ms). Tune PROCESSING_MS for the fake pipeline illusion.
-const PROCESSING_MS = 11000  // ~10-13s processing timer
-const STAGE_GAP_MS = 3000    // gap between each visible stage
+// Demo pacing (ms).
+const PROCESSING_MS = 1200   // Responsive loading
+const STAGE_GAP_MS = 1500    // Paced reveal of each stage
 
 export default function App() {
   const [theme, setTheme] = useState(() => {
@@ -258,33 +258,48 @@ export default function App() {
   }, [])
 
   // Demo flow handlers
-  const handleOpenDemo = useCallback(() => {
+  const handleOpenDemo = useCallback(async () => {
     // Reset and start demo
     setDemoData(null)
     setFlowOn(false)
     setDemoStage('processing')
+    setToast('Starting oil spill forensic simulation...')
 
-    // Fake pipeline processing, then reveal the detection
-    setTimeout(() => {
-      const data = loadDemoData()
+    try {
+      const data = await loadDemoData()
       setDemoData(data)
       setDemoStage('detected')
+      setToast('Oil slick footprint detected from Sentinel-1 SAR imagery')
 
-      // Sequential stage beats, each STAGE_GAP_MS after the previous one
+      // Sequential stage beats
       setTimeout(() => {
         setFlowOn(true)
         setDemoStage('flow')
-        const ring = data.detection?.geometry?.coordinates?.[0]
-        if (ring?.length) {
-          const sum = ring.reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0])
-          setFlowOrigin({ lon: sum[0] / ring.length, lat: sum[1] / ring.length, orientation_deg: null })
+        const firstPoly = data.detection?.features?.[0]?.geometry?.coordinates?.[0]
+        if (firstPoly?.length) {
+          const sum = firstPoly.reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0])
+          setFlowOrigin({ lon: sum[0] / firstPoly.length, lat: sum[1] / firstPoly.length, orientation_deg: null })
         }
       }, STAGE_GAP_MS)
 
-      setTimeout(() => setDemoStage('forecast'), STAGE_GAP_MS * 2)
-      setTimeout(() => setDemoStage('backtrack'), STAGE_GAP_MS * 3)
-      setTimeout(() => setDemoStage('suspects'), STAGE_GAP_MS * 4)
-    }, PROCESSING_MS)
+      setTimeout(() => {
+        setDemoStage('forecast')
+        setToast('Projecting forward drift trajectory cones...')
+      }, STAGE_GAP_MS * 2)
+
+      setTimeout(() => {
+        setDemoStage('backtrack')
+        setToast('Reverse Lagrangian backtrack corridor resolved')
+      }, STAGE_GAP_MS * 3)
+
+      setTimeout(() => {
+        setDemoStage('suspects')
+        setToast('Forensic vessel attribution leaderboard generated!')
+      }, STAGE_GAP_MS * 4)
+    } catch (err) {
+      console.error('Failed to load demo scenario', err)
+      setToast('Error loading demo scenario: ' + err.message)
+    }
   }, [])
 
   if (!userSession) {
@@ -373,6 +388,7 @@ export default function App() {
             onScanScene={scanScene}
             onSelectVessel={selectVessel}
             suspects={demoData?.suspects}
+            demoStage={demoStage}
           />
         )}
       </div>

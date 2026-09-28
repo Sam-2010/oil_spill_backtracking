@@ -269,7 +269,9 @@ function addOverlays(map) {
 }
 
 function getBoundsFromGeoJSON(fc) {
-  if (!fc?.features?.length) return null
+  if (!fc) return null
+  const features = fc.features || (fc.geometry ? [fc] : null)
+  if (!features?.length) return null
   const coords = []
   const extract = (g) => {
     if (!g) return
@@ -278,7 +280,7 @@ function getBoundsFromGeoJSON(fc) {
     else if (g.type === 'Polygon') coords.push(...g.coordinates.flat())
     else if (g.type === 'MultiPolygon') coords.push(...g.coordinates.flat(2))
   }
-  fc.features.forEach((f) => extract(f.geometry))
+  features.forEach((f) => extract(f.geometry || f))
   if (!coords.length) return null
   const ok = coords.filter((c) => Number.isFinite(c?.[0]) && Number.isFinite(c?.[1]))
   if (ok.length < 2) return null
@@ -507,7 +509,9 @@ export default function MapView({
       })
       .filter(Boolean)
 
-    setSrc('s-slicks', fc(slickFeatures))
+    if (!demoDetection) {
+      setSrc('s-slicks', fc(slickFeatures))
+    }
 
     // /api/vessels/live is already a GeoJSON FeatureCollection of points.
     setSrc('s-vessels', fc(
@@ -847,10 +851,11 @@ export default function MapView({
     if (!demoDetection) return
 
     // Feed to s-slicks source (same layer rendering as live polling)
-    src?.setData(demoDetection)
+    const detectionData = demoDetection?.type === 'FeatureCollection' ? demoDetection : fc(demoDetection?.features || [demoDetection])
+    src?.setData(detectionData)
 
     // Fly to detection bounds with padding
-    const bounds = getBoundsFromGeoJSON(demoDetection)
+    const bounds = getBoundsFromGeoJSON(detectionData)
     if (bounds) {
       map.fitBounds(bounds, { padding: 80, maxZoom: 12, duration: 1200 })
     }
@@ -946,7 +951,11 @@ export default function MapView({
       .map(f => f.properties?.hours_prior)
       .filter(h => h != null)
     if (allHours.length) {
-      corridorMaxHours.current = Math.max(...allHours)
+      const maxH = Math.max(...allHours)
+      corridorMaxHours.current = maxH
+      if (corridorHours === 0) {
+        setCorridorHours(maxH)
+      }
     }
 
     // Filter features by current slider value with opacity based on age
@@ -970,9 +979,10 @@ export default function MapView({
     }
 
     // Generate simple forward forecast cone by mirroring corridor direction
-    if (demoOrigin?.primary_centroid) {
-      const originLon = demoOrigin.primary_centroid.longitude
-      const originLat = demoOrigin.primary_centroid.latitude
+    const origin = demoOrigin?.primary_centroid || demoOrigin?.estimated_origin?.primary_centroid
+    if (origin) {
+      const originLon = origin.longitude
+      const originLat = origin.latitude
       // Create a forward cone of ~12 hours
       const fwdFeatures = []
       const centroidPath = demoCorridor.features
@@ -1141,14 +1151,14 @@ export default function MapView({
       )}
 
       {/* Origin Verdict Banner */}
-      {demoOrigin?.primary_centroid && corridorHours >= corridorMaxHours.current * 0.9 && (
+      {(demoOrigin?.primary_centroid || demoOrigin?.estimated_origin?.primary_centroid) && corridorHours >= corridorMaxHours.current * 0.9 && (
         <div className={`origin-verdict ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
           <div className="verdict-title">Estimated Origin</div>
           <div className="verdict-detail">
-            {demoOrigin.time_window_utc?.confidence || demoOrigin.confidence || 'medium'} confidence
+            {demoOrigin.time_window_utc?.confidence || demoOrigin.estimated_origin?.time_window_utc?.confidence || demoOrigin.confidence || 'high'} confidence
             {' — '}
-            {demoOrigin.time_window_utc?.hours_prior_min ?? 18}–
-            {demoOrigin.time_window_utc?.hours_prior_max ?? 24}h before detection
+            {demoOrigin.time_window_utc?.hours_prior_min ?? demoOrigin.estimated_origin?.time_window_utc?.hours_prior_min ?? 18}–
+            {demoOrigin.time_window_utc?.hours_prior_max ?? demoOrigin.estimated_origin?.time_window_utc?.hours_prior_max ?? 24}h before detection
           </div>
         </div>
       )}

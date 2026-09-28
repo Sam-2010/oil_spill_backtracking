@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 
 const STATUS_LABEL = {
   catalogued: 'In Orbit Queue',
@@ -82,11 +82,18 @@ export default function LeftPanel({
   onSelectVessel,
   suspects,
   onSelectSuspect,
+  demoStage,
 }) {
   const [tab, setTab] = useState('slicks')
   const [alertFilter, setAlertFilter] = useState('all')
   const [alertSearch, setAlertSearch] = useState('')
   const [expandedSuspect, setExpandedSuspect] = useState(null)
+
+  useEffect(() => {
+    if (suspects?.features?.length > 0 || demoStage === 'suspects') {
+      setTab('suspects')
+    }
+  }, [suspects, demoStage])
 
   const alertCounts = useMemo(() => {
     const res = { all: events.length, alert: 0, warning: 0, info: 0 }
