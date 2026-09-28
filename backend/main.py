@@ -16,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from .config import settings
 from .store import Store
 from .scheduler import System
+from .routers import forensics
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -304,6 +305,9 @@ async def ws_endpoint(ws: WebSocket):
     finally:
         system.hub.disconnect(ws)
 
+
+# ---- forensics router -------------------------------------------------------------
+app.include_router(forensics.router)
 
 # ---- static frontend ---------------------------------------------------------------
 if DIST.exists():

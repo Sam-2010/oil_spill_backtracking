@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import EarthBackground from './EarthBackground.jsx'
 
-export default function LoginPage({ onLoginSuccess }) {
+export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -10,7 +10,6 @@ export default function LoginPage({ onLoginSuccess }) {
   const [error, setError] = useState('')
   const [sceneLoaded, setSceneLoaded] = useState(false)
 
-  // Memoized callback so EarthBackground never re-initializes on keystrokes
   const handleSceneLoaded = useCallback(() => {
     setSceneLoaded(true)
   }, [])
@@ -20,227 +19,168 @@ export default function LoginPage({ onLoginSuccess }) {
     setError('')
 
     if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address.')
+      setError('Invalid credentials')
       return
     }
 
     if (!password || password.length < 4) {
-      setError('Password must be at least 4 characters long.')
+      setError('Invalid credentials')
       return
     }
 
     setLoading(true)
-
     setTimeout(() => {
       setLoading(false)
       if (onLoginSuccess) {
         onLoginSuccess({ email, role: 'Intelligence Officer' })
       }
-    }, 900)
+    }, 1200)
   }
 
-  const handleFillDemo = (e) => {
-    e.preventDefault()
+  const handleFillDemo = () => {
     setEmail('command@spill2source.io')
     setPassword('maritime2026')
   }
 
   return (
     <div className={`login-page-container ${sceneLoaded ? 'loaded' : ''}`}>
-      {/* 3D Earth WebGL Background - Small & Positioned Low (30-40% Width) */}
-      <EarthBackground onLoaded={handleSceneLoaded} />
+      {/* Left: Live Globe with Data Overlay (65%) */}
+      <div className="login-globe-panel">
+        <EarthBackground onLoaded={handleSceneLoaded} />
 
-      {/* Top Header Navigation (Editorial Minimalist) */}
-      <header className="ref-top-header">
-        <div className="ref-brand-logo">
-          <svg className="ref-star-icon" width="20" height="20" viewBox="0 0 32 32" fill="none">
-            <path d="M16 2L19.5 12.5L30 16L19.5 19.5L16 30L12.5 19.5L2 16L12.5 12.5L16 2Z" fill="#ffffff" />
-          </svg>
-          <span className="ref-brand-name">SPILL2SOURCE</span>
-        </div>
-
-        <div className="ref-header-actions">
-          <div className="ref-telemetry-pill-group">
-            <div className="telemetry-item">
-              <span className="telemetry-val">98.4%</span>
-              <span className="telemetry-lbl">ACCURACY</span>
-            </div>
-            <div className="telemetry-divider" />
-            <div className="telemetry-item">
-              <span className="telemetry-val">24/7</span>
-              <span className="telemetry-lbl">SAR RADAR</span>
-            </div>
+        {/* Top Header - Minimal */}
+        <header className="login-top-header">
+          <div className="login-brand">
+            <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+              <path d="M16 2L19.5 12.5L30 16L19.5 19.5L16 30L12.5 19.5L2 16L12.5 12.5L16 2Z" fill="#F5A623" />
+            </svg>
+            <span>Krishna Sindhu</span>
           </div>
-          <div className="telemetry-online-pill">
-            <span className="telemetry-dot" />
-            <span>SYSTEM ONLINE</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Editorial Headline (Swiss / Typography-Driven) */}
-      <div className="ref-hero-title-block">
-        <h1 className="ref-hero-title">
-          <span>GLOBAL MARINE</span>
-          <span className="ref-title-accent">INTELLIGENCE</span>
-        </h1>
-        <p className="ref-hero-subtitle">
-          Real-time satellite intelligence for marine monitoring and spill attribution.
-        </p>
-      </div>
-
-      {/* Subtle Scientific Annotations (Concentric Orbit Arc hugging Earth Rim) */}
-      <div className="ref-orbit-ring-container" aria-hidden="true">
-        <svg className="ref-orbit-svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMax meet">
-          <defs>
-            <path
-              id="subtleOrbitArc"
-              d="M 160 920 A 980 980 0 0 1 1760 920"
-              fill="none"
-            />
-          </defs>
-          {/* Subtle Concentric Measurement Orbit Arc */}
-          <circle
-            cx="960"
-            cy="1470"
-            r="970"
-            fill="none"
-            stroke="rgba(6, 201, 232, 0.22)"
-            strokeWidth="1"
-            strokeDasharray="4 6"
-          />
-          {/* Scientific Orbital Telemetry */}
-          <text className="ref-orbit-text">
-            <textPath href="#subtleOrbitArc" startOffset="50%" textAnchor="middle">
-              01.40 // SAR RADAR &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LAT 54° 12' N &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ATTRIBUTION NET &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; S1 OBSERVATION NODE
-            </textPath>
-          </text>
-        </svg>
-      </div>
-
-      {/* Refined Lightweight Minimal Login Card (Right Side, 380px, No Heavy Glassmorphism) */}
-      <div className="login-card-anchor">
-        <div className="minimal-editor-card">
-          <div className="card-header">
-            <h2 className="card-title">Sign in</h2>
-            <p className="card-subtitle">Enter your organization credentials</p>
-          </div>
-
-          {/* Validation Alert */}
-          {error && (
-            <div className="auth-alert" role="alert">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Authentication Form */}
-          <form onSubmit={handleSubmit} className="auth-form">
-            {/* Email */}
-            <div className="form-field">
-              <label htmlFor="login-email">Email</label>
-              <input
-                id="login-email"
-                type="email"
-                placeholder="name@organization.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                spellCheck="false"
-              />
-            </div>
-
-            {/* Password */}
-            <div className="form-field">
-              <div className="field-header">
-                <label htmlFor="login-password">Password</label>
-                <a
-                  href="#forgot"
-                  className="inline-link"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    alert('Password reset instructions dispatched to your email.')
-                  }}
-                >
-                  Forgot?
-                </a>
-              </div>
-              <div className="input-password-wrapper">
-                <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  tabIndex="-1"
-                >
-                  {showPassword ? (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </svg>
-                  ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember Me */}
-            <div className="options-row">
-              <label className="checkbox-control">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span className="checkbox-box" />
-                <span className="checkbox-text">Keep session active</span>
-              </label>
-            </div>
-
-            {/* Primary Sign In Button */}
+          <div className="login-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <button
-              type="submit"
-              className={`primary-submit-btn ${loading ? 'loading' : ''}`}
-              disabled={loading}
+              className="header-btn theme-toggle-btn"
+              onClick={onToggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              style={{ padding: '6px 8px' }}
             >
-              {loading ? (
-                <span className="loading-state">
-                  <span className="loading-spinner" />
-                  <span>Authenticating...</span>
-                </span>
+              {theme === 'dark' ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
               ) : (
-                <span className="btn-content">
-                  <span>Sign in</span>
-                  <span className="btn-arrow">→</span>
-                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
               )}
             </button>
-          </form>
-
-          {/* Discreet Demo Autofill Link */}
-          <div className="card-footnote">
-            <button type="button" className="demo-fill-btn" onClick={handleFillDemo}>
-              Use demo credentials
-            </button>
+            <div className="login-header-status">
+              <span className="status-dot" />
+              <span>SYSTEM ONLINE</span>
+            </div>
           </div>
+        </header>
+
+        {/* Editorial Hero Block */}
+        <div className="editorial-hero">
+          <h1 className="editorial-headline">
+            74 Active Monitoring Zones. 0 Unattributed Incidents Since June.
+          </h1>
+          <p className="editorial-body">
+            Real-time SAR radar + ML attribution for maritime oil spill detection.
+          </p>
+          <div className="editorial-telemetry">
+            <span className="telemetry-coords mono">59°54'N 025°48'E</span>
+            <span className="telemetry-sep">/</span>
+            <span className="telemetry-timestamp mono">2026-09-26T14:32:08Z</span>
+            <span className="telemetry-sep">/</span>
+            <span className="telemetry-accuracy mono">98.4% ACCURACY</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Terminal Auth Panel (35%) - Flush Edge, No Radius, No Glass */}
+      <div className="login-terminal-panel">
+        <div className="terminal-header">
+          <span className="terminal-prompt">{'>'}</span>
+          <span className="terminal-title">ACCESS SYSTEM</span>
+        </div>
+
+        {error && (
+          <div className="terminal-error">
+            <span className="error-code">AUTH_FAILED</span>
+            <span className="error-msg">{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="terminal-form">
+          <div className="terminal-field">
+            <label>Access System</label>
+            <input
+              type="email"
+              placeholder="operator@agency.gov"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              spellCheck="false"
+            />
+          </div>
+
+          <div className="terminal-field">
+            <label>Clearance Key</label>
+            <div className="terminal-input-wrap">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="terminal-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? '[HIDE]' : '[SHOW]'}
+              </button>
+            </div>
+          </div>
+
+          <div className="terminal-options">
+            <label className="terminal-checkbox">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span className="checkmark" />
+              <span>PERSIST_SESSION</span>
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            className={`terminal-submit ${loading ? 'loading' : ''}`}
+            disabled={loading}
+          >
+            {loading ? 'AUTHENTICATING...' : 'AUTHENTICATE'}
+          </button>
+        </form>
+
+        <div className="terminal-footer">
+          <button type="button" className="terminal-link" onClick={handleFillDemo}>
+            LOAD_DEMO_CREDENTIALS
+          </button>
         </div>
       </div>
     </div>

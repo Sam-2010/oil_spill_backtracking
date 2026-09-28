@@ -55,16 +55,28 @@ export default function SlickDetail({
   if (!detail || !selectedSlickId) {
     return (
       <aside className="panel right empty-state">
-        <div className="empty-state-box">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <p className="empty-title">No Slick Selected</p>
-          <p className="empty-desc">
-            Select a detected slick polygon on the map or from the left feed to inspect origin trajectory & vessel attribution.
-          </p>
+        <div className="empty-state-terminal">
+          <div className="terminal-header-line">
+            <span className="terminal-prompt">{'>'}</span>
+            <span className="terminal-label">ATTRIBUTION ENGINE READY</span>
+          </div>
+          <div className="terminal-list">
+            <div className="terminal-item">
+              <span className="terminal-bullet">·</span>
+              <span className="terminal-text">72h AIS track correlation active</span>
+            </div>
+            <div className="terminal-item">
+              <span className="terminal-bullet">·</span>
+              <span className="terminal-text">7-factor ML scoring models loaded</span>
+            </div>
+            <div className="terminal-item">
+              <span className="terminal-bullet">·</span>
+              <span className="terminal-text">Vessel registry: 12,847 entries</span>
+            </div>
+            <div className="terminal-item">
+              <span className="terminal-cursor">|</span>
+            </div>
+          </div>
         </div>
       </aside>
     )

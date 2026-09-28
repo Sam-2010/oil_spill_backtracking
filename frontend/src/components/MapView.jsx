@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
@@ -49,7 +49,7 @@ const C = {
 }
 
 // Gulf of Finland AOI. MapLibre takes [lon, lat] — the opposite of Leaflet.
-const HOME = { center: [25.4, 59.9], zoom: 8 }
+const HOME = { center: [80.0, 16.0], zoom: 5 }
 
 // Atmosphere. Alpha below 1 at low zoom lets the starfield behind the canvas
 // show through, so the Earth reads as a planet in space, not a flat disc.
@@ -68,9 +68,9 @@ const EMPTY = { type: 'FeatureCollection', features: [] }
 // Overlay draw order, bottom → top. The basemap is re-inserted below the first
 // of these that exists, so switching basemap never reshuffles the overlays.
 const OVERLAY_ORDER = [
-  'risk-fill', 'slick-fill', 'slick-line', 'cone-line',
+  'risk-fill', 'corridor-fill', 'slick-fill', 'slick-line', 'cone-line',
   'footprint-fill', 'footprint-line', 'drift-back', 'drift-fwd',
-  'track-line', 'track-start', 'vessels',
+  'track-line', 'track-start', 'vessels', 'suspects',
 ]
 
 function hydroCoord(lat, lon) {
@@ -165,7 +165,7 @@ function addOverlays(map) {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY })
   }
   ;['s-risk', 's-slicks', 's-vessels', 's-cone', 's-footprint',
-    's-back', 's-fwd', 's-track', 's-track-start'].forEach(src)
+    's-back', 's-fwd', 's-track', 's-track-start', 's-suspects', 's-corridor'].forEach(src)
 
   const layer = (def) => {
     if (!map.getLayer(def.id)) map.addLayer(def)
@@ -235,6 +235,146 @@ function addOverlays(map) {
       'circle-stroke-color': ['case', ['==', ['get', 'navStat'], 15], '#475569', C.good],
     },
   })
+
+  // Suspects layer - colored by suspicion_level, radius scaled by total_score
+  layer({
+    id: 'suspects', type: 'circle', source: 's-suspects',
+    paint: {
+      'circle-radius': ['interpolate', ['linear'], ['get', 'total_score'], 0, 6, 100, 18],
+      'circle-color': ['case',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], '#EF4444',
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#F59E0B',
+        '#10B981'
+      ],
+      'circle-opacity': 0.9,
+      'circle-stroke-width': 2,
+      'circle-stroke-color': ['case',
+        ['==', ['get', 'is_dark_ship'], true], '#ffffff',
+        ['==', ['get', 'suspicion_level'], 'HIGH'], '#7f1d1d',
+        ['==', ['get', 'suspicion_level'], 'MEDIUM'], '#92400e',
+        '#065f46'
+      ],
+      'circle-stroke-dasharray': ['case', ['==', ['get', 'is_dark_ship'], true], [4, 2], ['literal', []]],
+    },
+  })
+
+  // Corridor layer - time-sliced backtrack polygons with hours_prior opacity
+  layer({
+    id: 'corridor-fill', type: 'fill', source: 's-corridor',
+    paint: {
+      'fill-color': C.amber,
+      'fill-opacity': ['get', 'opacity'],
+    },
+  })
+}
+
+function getBoundsFromGeoJSON(fc) {
+  if (!fc?.features?.length) return null
+  const coords = []
+  const extract = (g) => {
+    if (!g) return
+    if (g.type === 'Point') coords.push(g.coordinates)
+    else if (g.type === 'LineString') coords.push(...g.coordinates)
+    else if (g.type === 'Polygon') coords.push(...g.coordinates.flat())
+    else if (g.type === 'MultiPolygon') coords.push(...g.coordinates.flat(2))
+  }
+  fc.features.forEach((f) => extract(f.geometry))
+  if (!coords.length) return null
+  const ok = coords.filter((c) => Number.isFinite(c?.[0]) && Number.isFinite(c?.[1]))
+  if (ok.length < 2) return null
+  const b = new maplibregl.LngLatBounds(ok[0], ok[0])
+  ok.forEach((c) => b.extend(c))
+  return b
+}
+
+// --- Flow field animation utilities ----------------------------------------
+function createFlowParticle(center, type, idx) {
+  // Random seed within bbox around center (approx 0.8 degrees)
+  const spread = 0.4
+  const angle = Math.random() * Math.PI * 2
+  const dist = Math.random() * spread
+  const lon = center[0] + Math.cos(angle) * dist
+  const lat = center[1] + Math.sin(angle) * dist * 0.7 // flatten for latitude
+  const length = 0.08 + Math.random() * 0.05 // line length in degrees
+  return {
+    id: `${type}-${idx}`,
+    type,
+    lon,
+    lat,
+    length,
+    progress: Math.random(), // 0-1 along the flow direction
+  }
+}
+
+function stepFlowParticle(p, config, bbox) {
+  const dirRad = (config[p.type].direction * Math.PI) / 180
+  const speed = config[p.type].speed
+  const dx = Math.cos(dirRad) * speed
+  const dy = Math.sin(dirRad) * speed
+
+  p.lon += dx
+  p.lat += dy
+
+  // Wrap if outside bbox
+  if (p.lon < bbox.minLng || p.lon > bbox.maxLng || p.lat < bbox.minLat || p.lat > bbox.maxLat) {
+    const spread = 0.4
+    const edge = Math.floor(Math.random() * 4) // 0=left, 1=right, 2=bottom, 3=top
+    switch (edge) {
+      case 0: // left edge, heading right
+        p.lon = bbox.minLng + 0.02
+        p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat)
+        break
+      case 1: // right edge, heading left (but we keep flow dir, so come from opposite)
+      default:
+        p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng)
+        p.lat = bbox.minLat + 0.02
+        break
+    }
+  }
+  return p
+}
+
+function particleToFeature(p, config) {
+  const dirRad = (config[p.type].direction * Math.PI) / 180
+  const dx = Math.cos(dirRad) * p.length
+  const dy = Math.sin(dirRad) * p.length * 0.7 // latitude flattening
+  return {
+    type: 'Feature',
+    properties: { type: p.type, color: config[p.type].color, width: config[p.type].width },
+    geometry: {
+      type: 'LineString',
+      coordinates: [[p.lon, p.lat], [p.lon + dx, p.lat + dy]],
+    },
+  }
+}
+
+function initFlowSourceAndLayers(map) {
+  if (!map.getSource('s-flow')) {
+    map.addSource('s-flow', { type: 'geojson', data: EMPTY })
+  }
+  if (!map.getLayer('flow-lines')) {
+    map.addLayer({
+      id: 'flow-lines',
+      type: 'line',
+      source: 's-flow',
+      paint: {
+        'line-color': ['get', 'color'],
+        'line-width': ['get', 'width'],
+        'line-opacity': 0.7,
+        'line-blur': 0.5,
+      },
+    })
+  }
+}
+
+function computeFlowBbox(origin) {
+  const spread = 0.55
+  return {
+    minLng: origin[0] - spread,
+    maxLng: origin[0] + spread,
+    minLat: origin[1] - spread * 0.7,
+    maxLat: origin[1] + spread * 0.7,
+  }
 }
 
 export default function MapView({
@@ -251,6 +391,13 @@ export default function MapView({
   rightPanelOpen,
   onSelectSlick,
   onSelectVessel,
+  demoDetection,
+  flowOn = false,
+  flowOrigin = null,
+  demoCorridor = null,
+  demoOrigin = null,
+  demoSuspects = null,
+  demoStage = 'idle',
 }) {
   const boxRef = useRef(null)
   const mapRef = useRef(null)
@@ -277,6 +424,25 @@ export default function MapView({
 
   const projRef = useRef(projection)
   projRef.current = projection
+
+  // Flow field animation refs
+  const flowRafRef = useRef(null)
+  const flowLastFrameRef = useRef(0)
+  const flowParticlesRef = useRef([])
+  const flowBboxRef = useRef(null)
+  const flowConfigRef = useRef({
+    // Water current: cyan, slower
+    current: { speed: 0.00008, direction: 45, color: '#38BDF8', width: 1.2 },
+    // Wind: amber, faster, slightly different bearing
+    wind: { speed: 0.00025, direction: 65, color: '#F59E0B', width: 1.5 },
+  })
+
+  // Corridor time-slice state
+  const [corridorHours, setCorridorHours] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(true)
+  const corridorRafRef = useRef(null)
+  const corridorMaxHours = useRef(26)
 
   // MapLibre has no glyph server configured here, so the "always on" analysis
   // labels are HTML markers rather than symbol layers.
@@ -552,6 +718,7 @@ export default function MapView({
       ['vessels', (p) => `${escapeHtml(p.name || `MMSI ${p.mmsi}`)} · ${Math.round(p.sog ?? 0)} kn`],
       ['slick-fill', (p) => `Slick #${escapeHtml(p.id)} · ${escapeHtml(p.area_km2)} km²`],
       ['risk-fill', (p) => `Spill risk ${(Number(p.p) * 100).toFixed(0)}%`],
+      ['suspects', (p) => `${escapeHtml(p.vessel_name || `MMSI ${p.mmsi}`)} · Score: ${p.total_score}% · ${p.suspicion_level}`],
     ]
     HOVER.forEach(([id, fmt]) => {
       map.on('mousemove', id, (e) => {
@@ -574,8 +741,20 @@ export default function MapView({
       const p = e.features?.[0]?.properties
       if (p) cbRef.current.onSelectSlick(p.id)
     }
+    const onSuspectClick = (e) => {
+      const p = e.features?.[0]?.properties
+      if (p) {
+        // Dispatch fly-to event for suspect vessel
+        window.dispatchEvent(new CustomEvent('fly-to', {
+          detail: { lon: p.lon || p.longitude || p.coordinates?.[0], lat: p.lat || p.latitude || p.coordinates?.[1] }
+        }))
+        // Also select the vessel if MMSI available
+        if (p.mmsi) cbRef.current.onSelectVessel(p.mmsi)
+      }
+    }
     map.on('click', 'vessels', onVesselClick)
     map.on('click', 'slick-fill', onSlickClick)
+    map.on('click', 'suspects', onSuspectClick)
 
     // --- coordinate readout -------------------------------------------------
     const strip = document.getElementById('coord-strip')
@@ -660,12 +839,229 @@ export default function MapView({
     applyData()
   }, [vessels, showVessels, slicks, riskOn, riskData, applyData])
 
+  // Demo flow: inject pre-run detection GeoJSON and fly to its bounds
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const src = map.getSource('s-slicks')
+    if (!demoDetection) return
+
+    // Feed to s-slicks source (same layer rendering as live polling)
+    src?.setData(demoDetection)
+
+    // Fly to detection bounds with padding
+    const bounds = getBoundsFromGeoJSON(demoDetection)
+    if (bounds) {
+      map.fitBounds(bounds, { padding: 80, maxZoom: 12, duration: 1200 })
+    }
+  }, [demoDetection])
+
   useEffect(() => {
     applyData()
     if (!detail) return
     if (readyRef.current) focusDetail()
     else pendingFocusRef.current = focusDetail
   }, [detail, applyData, focusDetail])
+
+  // --- Flow field animation effect -------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+
+    // Parse orientation from flowOrigin if available, else use defaults
+    const orientationDeg = flowOrigin?.orientation_deg ?? null
+    if (orientationDeg != null) {
+      flowConfigRef.current.current.direction = (orientationDeg + 180) % 360 // opposite (source direction)
+      flowConfigRef.current.wind.direction = (orientationDeg + 20) % 360 // slight offset
+    }
+
+    const origin = flowOrigin ? [flowOrigin.lon, flowOrigin.lat] : null
+
+    if (!flowOn || !origin) {
+      // Cleanup: stop animation and clear data
+      if (flowRafRef.current) {
+        cancelAnimationFrame(flowRafRef.current)
+        flowRafRef.current = null
+      }
+      const s = map.getSource('s-flow')
+      if (s) s.setData(EMPTY)
+      return
+    }
+
+    // Initialize source/layers once
+    initFlowSourceAndLayers(map)
+
+    // Set up bbox and particles
+    flowBboxRef.current = computeFlowBbox(origin)
+    const particles = []
+    for (let i = 0; i < 80; i++) particles.push(createFlowParticle(origin, 'current', i))
+    for (let i = 0; i < 40; i++) particles.push(createFlowParticle(origin, 'wind', i + 80))
+    flowParticlesRef.current = particles
+
+    const step = (ts) => {
+      const map = mapRef.current
+      if (!map || !flowOn) return
+
+      // Throttle to ~30fps (33ms between frames)
+      if (ts - flowLastFrameRef.current < 33) {
+        flowRafRef.current = requestAnimationFrame(step)
+        return
+      }
+      flowLastFrameRef.current = ts
+
+      const cfg = flowConfigRef.current
+      const bbox = flowBboxRef.current
+      const parts = flowParticlesRef.current
+
+      for (const p of parts) {
+        stepFlowParticle(p, cfg, bbox)
+      }
+
+      const s = map.getSource('s-flow')
+      if (s) {
+        s.setData({ type: 'FeatureCollection', features: parts.map((p) => particleToFeature(p, cfg)) })
+      }
+
+      flowRafRef.current = requestAnimationFrame(step)
+    }
+
+    flowRafRef.current = requestAnimationFrame(step)
+
+    return () => {
+      if (flowRafRef.current) {
+        cancelAnimationFrame(flowRafRef.current)
+        flowRafRef.current = null
+      }
+    }
+  }, [flowOn, flowOrigin])
+
+  // --- Corridor time-slice animation -----------------------------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    if (!demoCorridor?.features?.length) return
+
+    // Compute max hours from corridor data
+    const allHours = demoCorridor.features
+      .map(f => f.properties?.hours_prior)
+      .filter(h => h != null)
+    if (allHours.length) {
+      corridorMaxHours.current = Math.max(...allHours)
+    }
+
+    // Filter features by current slider value with opacity based on age
+    const filtered = demoCorridor.features.filter(f => {
+      const h = f.properties?.hours_prior ?? 0
+      return h <= corridorHours
+    }).map(f => {
+      const h = f.properties?.hours_prior ?? 0
+      // Older = more transparent; 0 hours = 0.5 opacity, max hours = 0.1
+      const opacity = 0.5 - (h / corridorMaxHours.current) * 0.4
+      return {
+        ...f,
+        properties: { ...f.properties, opacity: Math.max(0.1, opacity) }
+      }
+    })
+
+    // Update corridor source
+    const src = map.getSource('s-corridor')
+    if (src) {
+      src.setData({ type: 'FeatureCollection', features: filtered })
+    }
+
+    // Generate simple forward forecast cone by mirroring corridor direction
+    if (demoOrigin?.primary_centroid) {
+      const originLon = demoOrigin.primary_centroid.longitude
+      const originLat = demoOrigin.primary_centroid.latitude
+      // Create a forward cone of ~12 hours
+      const fwdFeatures = []
+      const centroidPath = demoCorridor.features
+        .filter(f => f.properties?.centroid_longitude && f.properties?.centroid_latitude)
+        .sort((a, b) => (b.properties?.hours_prior ?? 0) - (a.properties?.hours_prior ?? 0))
+
+      if (centroidPath.length >= 2) {
+        // Get direction from newest to oldest
+        const newest = centroidPath[0]
+        const oldest = centroidPath[centroidPath.length - 1]
+        const dx = newest.properties.centroid_longitude - oldest.properties.centroid_longitude
+        const dy = newest.properties.centroid_latitude - oldest.properties.centroid_latitude
+        const dirRad = Math.atan2(dy, dx)
+
+        // Generate forward cone circles (cyan)
+        for (let i = 1; i <= 4; i++) {
+          const distKm = i * 15 // 15km increments
+          const spreadKm = i * 8 // widening spread
+          fwdFeatures.push({
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'Polygon', coordinates: [circleRing(originLon, originLat, spreadKm)] },
+          })
+        }
+      }
+
+      const fwdSrc = map.getSource('s-fwd')
+      if (fwdSrc && fwdFeatures.length) {
+        fwdSrc.setData({ type: 'FeatureCollection', features: fwdFeatures })
+      }
+
+      // Add origin marker if corridor shows max hours
+      if (corridorHours >= corridorMaxHours.current * 0.9) {
+        clearLabels()
+        addOriginMarker(map, [originLon, originLat], 5)
+        addLabel(map, [originLon, originLat + 0.05], 'Estimated Release Origin', 'bottom')
+      }
+    }
+  }, [demoCorridor, corridorHours, demoOrigin])
+
+  // --- Suspects layer -------------------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !readyRef.current) return
+    const src = map.getSource('s-suspects')
+    if (!src) return
+    if (demoSuspects?.features?.length) {
+      src.setData(demoSuspects)
+    } else {
+      src.setData(EMPTY)
+    }
+  }, [demoSuspects])
+
+  // Playback animation
+  useEffect(() => {
+    if (!isPlaying) {
+      if (corridorRafRef.current) {
+        cancelAnimationFrame(corridorRafRef.current)
+        corridorRafRef.current = null
+      }
+      return
+    }
+
+    let lastTime = performance.now()
+    const step = (now) => {
+      if (!isPlaying) return
+      const delta = now - lastTime
+      if (delta > 200) { // Update every 200ms = 5 steps per second
+        lastTime = now
+        setCorridorHours(h => {
+          const next = h + 1
+          if (next > corridorMaxHours.current) {
+            setIsPlaying(false)
+            return corridorMaxHours.current
+          }
+          return next
+        })
+      }
+      corridorRafRef.current = requestAnimationFrame(step)
+    }
+    corridorRafRef.current = requestAnimationFrame(step)
+
+    return () => {
+      if (corridorRafRef.current) {
+        cancelAnimationFrame(corridorRafRef.current)
+        corridorRafRef.current = null
+      }
+    }
+  }, [isPlaying])
 
   return (
     <div className={`map-wrap ${rightPanelOpen ? 'dock-r-open' : 'dock-r-closed'}`}>
@@ -674,14 +1070,25 @@ export default function MapView({
       <div ref={boxRef} className="map" />
 
       {/* Floating Chart Legend (smoothly offsets when left intelligence dock opens) */}
-      <div className={`map-legend ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
-        <div className="lg-title">GIS LAYER KEY</div>
-        <div><span className="sw slick" /> Detected Slick (Sentinel-1 SAR)</div>
-        <div><span className="sw origin" /> Estimated Release Origin</div>
-        <div><span className="sw back" /> Backward Drift Hindcast</div>
-        <div><span className="sw fwd" /> Forward Forecast Cone</div>
-        <div><span className="sw ais" /> Live AIS Vessel Target</div>
-        <div><span className="sw suspect" /> Ranked Suspect Vessel</div>
+      <div className={`map-legend ${legendOpen ? 'legend-open' : 'legend-collapsed'} ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
+        <button
+          className="legend-toggle"
+          onClick={() => setLegendOpen(v => !v)}
+          title={legendOpen ? 'Hide layer key' : 'Show layer key'}
+          aria-expanded={legendOpen}>
+          {legendOpen ? '▾' : '▸'}
+        </button>
+        {legendOpen && (
+          <div className="legend-body">
+            <div className="lg-title">GIS LAYER KEY</div>
+            <div><span className="sw slick" /> Detected Slick (Sentinel-1 SAR)</div>
+            <div><span className="sw origin" /> Estimated Release Origin</div>
+            <div><span className="sw back" /> Backward Drift Hindcast</div>
+            <div><span className="sw fwd" /> Forward Forecast Cone</div>
+            <div><span className="sw ais" /> Live AIS Vessel Target</div>
+            <div><span className="sw suspect" /> Ranked Suspect Vessel</div>
+          </div>
+        )}
       </div>
 
       {riskOn && (
@@ -689,6 +1096,60 @@ export default function MapView({
           <span>SPILL RISK</span>
           <span className="ramp" aria-hidden="true" />
           <span className="mono">LOW → HIGH</span>
+        </div>
+      )}
+
+      {flowOn && flowOrigin && (
+        <div className={`flow-legend ${rightPanelOpen ? 'dock-open' : 'dock-closed'}`}>
+          <div className="fl-row">
+            <span className="fl-arrow" style={{ transform: `rotate(${flowConfigRef.current.current.direction}deg)`, color: '#38BDF8' }}>↑</span>
+            <span className="fl-label">Current 0.4 m/s</span>
+          </div>
+          <div className="fl-row">
+            <span className="fl-arrow" style={{ transform: `rotate(${flowConfigRef.current.wind.direction}deg)`, color: '#F59E0B' }}>↑</span>
+            <span className="fl-label">Wind 6 m/s</span>
+          </div>
+        </div>
+      )}
+
+      {/* Corridor Time Slider UI */}
+      {demoCorridor && (
+        <div className={`corridor-controls ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
+          <div className="corridor-header">
+            <span className="corridor-title">Backtrack Time</span>
+            <span className="corridor-hours mono">{corridorHours.toFixed(0)}h / {corridorMaxHours.current}h</span>
+          </div>
+          <input
+            type="range"
+            className="corridor-slider"
+            min={0}
+            max={corridorMaxHours.current}
+            step={1}
+            value={corridorHours}
+            onChange={(e) => {
+              setCorridorHours(Number(e.target.value))
+              setIsPlaying(false)
+            }}
+          />
+          <button
+            className="corridor-play-btn"
+            onClick={() => setIsPlaying(p => !p)}
+          >
+            {isPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+        </div>
+      )}
+
+      {/* Origin Verdict Banner */}
+      {demoOrigin?.primary_centroid && corridorHours >= corridorMaxHours.current * 0.9 && (
+        <div className={`origin-verdict ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
+          <div className="verdict-title">Estimated Origin</div>
+          <div className="verdict-detail">
+            {demoOrigin.time_window_utc?.confidence || demoOrigin.confidence || 'medium'} confidence
+            {' — '}
+            {demoOrigin.time_window_utc?.hours_prior_min ?? 18}–
+            {demoOrigin.time_window_utc?.hours_prior_max ?? 24}h before detection
+          </div>
         </div>
       )}
 

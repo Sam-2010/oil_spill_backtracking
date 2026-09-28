@@ -6,11 +6,25 @@ import LeftPanel from './components/LeftPanel.jsx'
 import SlickDetail from './components/SlickDetail.jsx'
 import VesselCard from './components/VesselCard.jsx'
 import LoginPage from './components/LoginPage.jsx'
+import TelemetryStatusBar from './components/TelemetryStatusBar.jsx'
+import { loadDemoData } from './data/demoData.js'
+
+// Demo pacing (ms). Tune PROCESSING_MS for the fake pipeline illusion.
+const PROCESSING_MS = 11000  // ~10-13s processing timer
+const STAGE_GAP_MS = 3000    // gap between each visible stage
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('krishnasindhu_theme') || 'dark'
+    } catch {
+      return 'dark'
+    }
+  })
+
   const [userSession, setUserSession] = useState(() => {
     try {
-      const saved = localStorage.getItem('spill2source_session')
+      const saved = localStorage.getItem('krishnasindhu_session')
       return saved ? JSON.parse(saved) : null
     } catch {
       return null
@@ -31,6 +45,20 @@ export default function App() {
   const riskStatusRef = useRef(null)
   const [toast, setToast] = useState(null)
   const [leftPanelOpen, setLeftPanelOpen] = useState(true)
+
+  // Demo flow state
+  const [demoStage, setDemoStage] = useState('idle')
+  const [demoData, setDemoData] = useState(null)
+  const [flowOn, setFlowOn] = useState(false)
+  const [flowOrigin, setFlowOrigin] = useState(null)
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark'
+      localStorage.setItem('krishnasindhu_theme', next)
+      return next
+    })
+  }, [])
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [showVessels, setShowVessels] = useState(true)
   const [basemapKey, setBasemapKey] = useState('dark')
@@ -166,7 +194,24 @@ export default function App() {
   const openSlick = useCallback(async (id) => {
     setSelectedSlickId(id)
     setRightPanelOpen(true)
-    try { setDetail(await getJSON(`/api/slicks/${id}`)) } catch { /* noop */ }
+    try {
+      const d = await getJSON(`/api/slicks/${id}`)
+      setDetail(d)
+      // Set flow origin to slick centroid (fallback to geometry centroid)
+      if (d?.centroid_lon != null) {
+        const orientation = d.morphology_analysis?.orientation_deg ?? null
+        setFlowOrigin({ lon: d.centroid_lon, lat: d.centroid_lat, orientation_deg: orientation })
+      } else if (d?.geometry?.geometry?.coordinates) {
+        // Compute centroid from polygon
+        const ring = d.geometry.geometry.coordinates[0]
+        if (ring?.length) {
+          const sum = ring.reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0])
+          const centroid = [sum[0] / ring.length, sum[1] / ring.length]
+          const orientation = d.morphology_analysis?.orientation_deg ?? null
+          setFlowOrigin({ lon: centroid[0], lat: centroid[1], orientation_deg: orientation })
+        }
+      }
+    } catch { /* noop */ }
   }, [])
 
   const scanScene = useCallback(async (pid, name) => {
@@ -209,22 +254,56 @@ export default function App() {
 
   const handleLogout = useCallback(() => {
     setUserSession(null)
-    localStorage.removeItem('spill2source_session')
+    localStorage.removeItem('krishnasindhu_session')
+  }, [])
+
+  // Demo flow handlers
+  const handleOpenDemo = useCallback(() => {
+    // Reset and start demo
+    setDemoData(null)
+    setFlowOn(false)
+    setDemoStage('processing')
+
+    // Fake pipeline processing, then reveal the detection
+    setTimeout(() => {
+      const data = loadDemoData()
+      setDemoData(data)
+      setDemoStage('detected')
+
+      // Sequential stage beats, each STAGE_GAP_MS after the previous one
+      setTimeout(() => {
+        setFlowOn(true)
+        setDemoStage('flow')
+        const ring = data.detection?.geometry?.coordinates?.[0]
+        if (ring?.length) {
+          const sum = ring.reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0])
+          setFlowOrigin({ lon: sum[0] / ring.length, lat: sum[1] / ring.length, orientation_deg: null })
+        }
+      }, STAGE_GAP_MS)
+
+      setTimeout(() => setDemoStage('forecast'), STAGE_GAP_MS * 2)
+      setTimeout(() => setDemoStage('backtrack'), STAGE_GAP_MS * 3)
+      setTimeout(() => setDemoStage('suspects'), STAGE_GAP_MS * 4)
+    }, PROCESSING_MS)
   }, [])
 
   if (!userSession) {
     return (
-      <LoginPage
-        onLoginSuccess={(session) => {
-          setUserSession(session)
-          localStorage.setItem('spill2source_session', JSON.stringify(session))
-        }}
-      />
+      <div className="app-hud" data-theme={theme}>
+        <LoginPage
+          onLoginSuccess={(session) => {
+            setUserSession(session)
+            localStorage.setItem('krishnasindhu_session', JSON.stringify(session))
+          }}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      </div>
     )
   }
 
   return (
-    <div className="app-hud">
+    <div className="app-hud" data-theme={theme}>
       {/* 1. Full Screen Map Base Layer */}
       <div className="map-background">
         <MapView
@@ -241,6 +320,13 @@ export default function App() {
           rightPanelOpen={rightPanelOpen}
           onSelectSlick={openSlick}
           onSelectVessel={selectVessel}
+          demoDetection={demoData?.detection}
+          flowOn={flowOn}
+          flowOrigin={flowOrigin}
+          demoCorridor={demoData?.corridor}
+          demoOrigin={demoData?.origin}
+          demoSuspects={demoData?.suspects}
+          demoStage={demoStage}
         />
       </div>
 
@@ -260,6 +346,11 @@ export default function App() {
         onResetView={resetAOI}
         userSession={userSession}
         onLogout={handleLogout}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onOpenDemo={handleOpenDemo}
+        flowOn={flowOn}
+        onToggleFlow={() => setFlowOn(v => !v)}
       />
 
       {/* 3. Floating Left Intelligence Dock */}
@@ -281,6 +372,7 @@ export default function App() {
             onOpenSlick={openSlick}
             onScanScene={scanScene}
             onSelectVessel={selectVessel}
+            suspects={demoData?.suspects}
           />
         )}
       </div>
@@ -307,33 +399,20 @@ export default function App() {
               onSelectVessel={selectVessel}
               onAnalyze={() => reanalyze(detail?.id)}
               onClose={() => { setDetail(null); setSelectedSlickId(null) }}
+              demoData={demoData}
+              demoStage={demoStage}
             />
           )
         )}
       </div>
 
-      {/* 5. Floating Bottom Telemetry Ticker */}
-      <div className="bottom-hud-ticker mono">
-        <div className="ticker-item">
-          <span className="ticker-label">SURVEILLANCE AOI:</span>
-          <span className="ticker-val">GULF OF FINLAND</span>
-        </div>
-        <div className="ticker-divider" />
-        <div className="ticker-item">
-          <span className="ticker-label">ACTIVE VESSELS:</span>
-          <span className="ticker-val">{vessels?.features?.length || 0}</span>
-        </div>
-        <div className="ticker-divider" />
-        <div className="ticker-item">
-          <span className="ticker-label">DETECTED SLICKS:</span>
-          <span className="ticker-val alert">{slicks?.length || 0}</span>
-        </div>
-        <div className="ticker-divider" />
-        <div className="ticker-item">
-          <span className="ticker-label">SAR SCENES:</span>
-          <span className="ticker-val">{scenes?.length || 0}</span>
-        </div>
-      </div>
+      {/* 5. Telemetry Status Bar */}
+      <TelemetryStatusBar
+        vessels={vessels}
+        slicks={slicks}
+        scenes={scenes}
+        events={events}
+      />
 
       {/* 6. Notification Toast */}
       {toast && (

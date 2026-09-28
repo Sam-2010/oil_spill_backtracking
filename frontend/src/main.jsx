@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
+import './styles-new.css'
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -14,7 +15,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('SPILL2SOURCE crashed:', error, info)
+    console.error('Krishna Sindhu crashed:', error, info)
   }
 
   render() {
