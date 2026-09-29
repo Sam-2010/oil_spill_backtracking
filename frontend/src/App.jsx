@@ -429,6 +429,7 @@ export default function App() {
           demoTrajectories={demoData?.trajectories}
           demoPipelines={demoData?.pipelines}
           demoStage={demoStage}
+          metVectors={demoData?.metVectors}
         />
       </div>
 

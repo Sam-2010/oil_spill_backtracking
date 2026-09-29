@@ -8,6 +8,7 @@ export async function loadDemoData() {
     { key: 'trajectories', path: '/demo/trajectories.json' },
     { key: 'pipelines', path: '/demo/pipelines.geojson' },
     { key: 'dossier', path: '/demo/dossier.json' },
+    { key: 'metVectors', path: '/demo/met_vectors.json' },
   ];
 
   const results = {};

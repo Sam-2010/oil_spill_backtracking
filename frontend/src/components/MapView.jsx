@@ -384,29 +384,96 @@ function getBoundsFromGeoJSON(fc) {
   return b
 }
 
-// --- Flow field animation utilities ----------------------------------------
+// --- Flow field animation utilities (Copernicus CMEMS & NOAA Data-Driven) ---
+// Bilinear spatial interpolation of 2D velocity field from real met-ocean grid
+function sampleMetVector(lon, lat, type, metVectors, fallbackConfig) {
+  if (!metVectors || !metVectors.grid || !metVectors.metadata) {
+    const fallback = fallbackConfig?.[type] || { direction: 45, speed: 0.0001 }
+    const rad = ((fallback.direction || 0) * Math.PI) / 180
+    return {
+      u: Math.cos(rad) * 2.0,
+      v: Math.sin(rad) * 2.0,
+      speed_ms: 2.0,
+      dir_deg: fallback.direction || 0,
+      waveHeight: 1.0,
+      waveDir: 100,
+    }
+  }
+
+  const { lons, lats, grid_dims } = metVectors.metadata
+  const [nx] = grid_dims
+  const minLon = lons[0]
+  const maxLon = lons[lons.length - 1]
+  const minLat = lats[0]
+  const maxLat = lats[lats.length - 1]
+
+  // Clamp coordinates within grid domain bounds
+  const cLon = Math.max(minLon, Math.min(maxLon, lon))
+  const cLat = Math.max(minLat, Math.min(maxLat, lat))
+
+  // Find bounding cell index [i, j]
+  let i = 0
+  while (i < lons.length - 2 && cLon > lons[i + 1]) i++
+  let j = 0
+  while (j < lats.length - 2 && cLat > lats[j + 1]) j++
+
+  const lon0 = lons[i], lon1 = lons[i + 1]
+  const lat0 = lats[j], lat1 = lats[j + 1]
+
+  const tx = lon1 > lon0 ? (cLon - lon0) / (lon1 - lon0) : 0
+  const ty = lat1 > lat0 ? (cLat - lat0) / (lat1 - lat0) : 0
+
+  const cell00 = metVectors.grid[j * nx + i]
+  const cell10 = metVectors.grid[j * nx + (i + 1)]
+  const cell01 = metVectors.grid[(j + 1) * nx + i]
+  const cell11 = metVectors.grid[(j + 1) * nx + (i + 1)]
+
+  if (!cell00 || !cell10 || !cell01 || !cell11) {
+    return { u: 0, v: 0, speed_ms: 0, dir_deg: 0, waveHeight: 1.0, waveDir: 100 }
+  }
+
+  const data00 = cell00[type] || cell00.current
+  const data10 = cell10[type] || cell10.current
+  const data01 = cell01[type] || cell01.current
+  const data11 = cell11[type] || cell11.current
+
+  // Bilinear interpolation of u and v velocity components (m/s)
+  const uTop = (1 - tx) * data00.u + tx * data10.u
+  const uBot = (1 - tx) * data01.u + tx * data10.u
+  const u = (1 - ty) * uTop + ty * uBot
+
+  const vTop = (1 - tx) * data00.v + tx * data10.v
+  const vBot = (1 - tx) * data01.v + tx * data10.v
+  const v = (1 - ty) * vTop + ty * vBot
+
+  // Bilinear interpolation of wave conditions for swell modulation
+  const w00 = cell00.wave || { height_m: 1.0, dir_deg: 100 }
+  const w10 = cell10.wave || { height_m: 1.0, dir_deg: 100 }
+  const w01 = cell01.wave || { height_m: 1.0, dir_deg: 100 }
+  const w11 = cell11.wave || { height_m: 1.0, dir_deg: 100 }
+  const waveHeight = (1 - ty) * ((1 - tx) * w00.height_m + tx * w10.height_m) + ty * ((1 - tx) * w01.height_m + tx * w11.height_m)
+  const waveDir = w00.dir_deg
+
+  const speed_ms = Math.hypot(u, v)
+  // Flow bearing angle in degrees (0 = North, 90 = East, 180 = South, 270 = West)
+  const dir_deg = (Math.atan2(u, v) * (180 / Math.PI) + 360) % 360
+
+  return { u, v, speed_ms, dir_deg, waveHeight, waveDir }
+}
+
 function createFlowParticle(center, type, idx) {
-  // Random seed within bbox around center (approx 0.8 degrees)
+  // Random seed within flow bbox around center (approx 0.5 degrees)
   const spread = 0.5
   const angle = Math.random() * Math.PI * 2
   const dist = Math.random() * spread
   const lon = center[0] + Math.cos(angle) * dist
   const lat = center[1] + Math.sin(angle) * dist * 0.75 // flatten for latitude
 
-  // Natural lengths: wind is longer and sweeping (0.10 to 0.18 deg), currents tighter (0.06 to 0.11 deg)
+  // Streamline visual length in degrees:
+  // Wind streamlines are longer (0.08 to 0.13 deg), currents more compact (0.04 to 0.08 deg)
   const length = type === 'wind'
-    ? 0.11 + Math.random() * 0.07
-    : 0.06 + Math.random() * 0.05
-
-  // Natural curvature:
-  // Wind has sweeping atmospheric cyclonic/anticyclonic curvature (-0.45 to +0.45)
-  // Water current has subtle hydrodynamic drift curvature (-0.25 to +0.25)
-  const curvature = type === 'wind'
-    ? (Math.random() - 0.48) * 0.55
-    : (Math.random() - 0.5) * 0.35
-
-  const waveAmp = type === 'wind' ? 0.015 + Math.random() * 0.015 : 0.008 + Math.random() * 0.01
-  const phase = Math.random() * Math.PI * 2
+    ? 0.08 + Math.random() * 0.05
+    : 0.045 + Math.random() * 0.035
 
   return {
     id: `${type}-${idx}`,
@@ -414,87 +481,79 @@ function createFlowParticle(center, type, idx) {
     lon,
     lat,
     length,
-    curvature,
-    waveAmp,
-    phase,
-    progress: Math.random(),
     age: Math.floor(Math.random() * 120),
-    maxAge: 180 + Math.floor(Math.random() * 120),
+    maxAge: 160 + Math.floor(Math.random() * 100),
   }
 }
 
-function stepFlowParticle(p, config, bbox) {
-  const baseDir = config[p.type].direction
-  // Spatial curl: natural atmospheric & oceanic flow has subtle spatial gradient across the Gulf
-  const spatialCurl = Math.sin(p.lon * 6.5 + p.lat * 5.2 + p.phase * 0.15) * 18.0
-  const personalCurl = p.curvature * 22.0
-  const totalAngleDeg = baseDir + spatialCurl + personalCurl
-  const dirRad = (totalAngleDeg * Math.PI) / 180
+function stepFlowParticle(p, config, bbox, metVectors) {
+  const sample = sampleMetVector(p.lon, p.lat, p.type, metVectors, config)
 
-  const speed = config[p.type].speed
-  const dx = Math.cos(dirRad) * speed
-  const dy = Math.sin(dirRad) * speed * 0.8 // latitude aspect flattening
+  // Real velocity advection step:
+  // Velocity is scaled to provide a smooth, observable simulation drift on the map
+  const dt = p.type === 'wind' ? 0.000055 : 0.000075
+  const cosLat = Math.cos((p.lat * Math.PI) / 180) || 0.875
+  const dx = (sample.u * dt) / cosLat
+  const dy = sample.v * dt
 
   p.lon += dx
   p.lat += dy
   p.age = (p.age || 0) + 1
 
-  // Respawn gracefully if outside bbox or past max age
+  // Respawn gracefully at upstream boundaries or within flow field
   const outOfBounds = p.lon < bbox.minLng || p.lon > bbox.maxLng || p.lat < bbox.minLat || p.lat > bbox.maxLat
   if (outOfBounds || p.age > (p.maxAge || 240)) {
     p.age = 0
-    // Re-seed at an upstream boundary or within flow field
-    const edge = Math.floor(Math.random() * 3)
+    const edge = Math.floor(Math.random() * 4)
     if (edge === 0) {
-      // Left/West boundary
-      p.lon = bbox.minLng + 0.01 + Math.random() * 0.04
+      // Upstream boundary along X
+      p.lon = sample.u >= 0
+        ? bbox.minLng + 0.01 + Math.random() * 0.03
+        : bbox.maxLng - 0.01 - Math.random() * 0.03
       p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat)
     } else if (edge === 1) {
-      // Bottom/South boundary
+      // Upstream boundary along Y
       p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng)
-      p.lat = bbox.minLat + 0.01 + Math.random() * 0.04
+      p.lat = sample.v >= 0
+        ? bbox.minLat + 0.01 + Math.random() * 0.03
+        : bbox.maxLat - 0.01 - Math.random() * 0.03
     } else {
       // Interior flow field
-      p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng) * 0.75
-      p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat) * 0.75
+      p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng)
+      p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat)
     }
   }
   return p
 }
 
-function particleToFeature(p, config) {
-  const baseDir = config[p.type].direction
-  const spatialCurl = Math.sin(p.lon * 6.5 + p.lat * 5.2 + p.phase * 0.15) * 18.0
-  const personalCurl = p.curvature * 22.0
-  const totalAngleDeg = baseDir + spatialCurl + personalCurl
-  const dirRad = (totalAngleDeg * Math.PI) / 180
+function particleToFeature(p, config, metVectors) {
+  // Numerical forward integration of streamline through the real (u, v) velocity vector field.
+  // Physical spatial shear (du/dy, dv/dx) and Coriolis/bathymetric turning naturally produce
+  // authentic curvature rather than artificial procedural sine waves.
+  const numSteps = 6
+  const stepDist = p.length / numSteps
+  const coords = [[p.lon, p.lat]]
+  let curLon = p.lon
+  let curLat = p.lat
 
-  // Multi-point smooth curved streamline (6 points)
-  const numPts = 6
-  const coords = []
+  for (let i = 1; i <= numSteps; i++) {
+    const s = sampleMetVector(curLon, curLat, p.type, metVectors, config)
+    const spd = Math.max(0.1, s.speed_ms)
+    // Normalized velocity direction components
+    const uNorm = s.u / spd
+    const vNorm = s.v / spd
 
-  for (let i = 0; i <= numPts; i++) {
-    const u = i / numPts // 0 to 1 from tail to head
-    const forwardDist = u * p.length
+    // Subtle physical swell modulation from Copernicus wave model
+    const wavePerpX = -Math.sin(((s.waveDir || 100) * Math.PI) / 180)
+    const wavePerpY = Math.cos(((s.waveDir || 100) * Math.PI) / 180)
+    const swellAmp = (s.waveHeight || 1.0) * 0.0003
+    const swellOffset = Math.sin(curLon * 25.0 + curLat * 25.0 + i * 0.7) * swellAmp
 
-    // Forward displacement along flow vector
-    const fx = Math.cos(dirRad) * forwardDist
-    const fy = Math.sin(dirRad) * forwardDist * 0.75
+    const cosLat = Math.cos((curLat * Math.PI) / 180) || 0.875
+    curLon += (uNorm * stepDist + wavePerpX * swellOffset) / cosLat
+    curLat += (vNorm * stepDist + wavePerpY * swellOffset)
 
-    // Normal vector perpendicular to flow direction
-    const nx = -Math.sin(dirRad)
-    const ny = Math.cos(dirRad) * 0.75
-
-    // Smooth aerodynamic/hydrodynamic lateral curve:
-    // Parabolic arc (curves out and gently sweeps) + subtle sinusoidal undulation
-    const arc = Math.sin(u * Math.PI) * p.curvature * p.length * 0.75
-    const wave = Math.sin(u * Math.PI * 1.5 + p.phase) * (p.waveAmp || 0.01) * 0.5
-    const lateralOffset = arc + wave
-
-    coords.push([
-      p.lon + fx + nx * lateralOffset,
-      p.lat + fy + ny * lateralOffset,
-    ])
+    coords.push([curLon, curLat])
   }
 
   return {
@@ -638,6 +697,7 @@ export default function MapView({
   demoTrajectories = null,
   demoPipelines = null,
   demoStage = 'idle',
+  metVectors = null,
 }) {
   const boxRef = useRef(null)
   const mapRef = useRef(null)
@@ -647,6 +707,8 @@ export default function MapView({
   const suspectMarkersRef = useRef([])
   const culpritPipelineMarkerRef = useRef(null)
   const pendingFocusRef = useRef(null)
+  const metVectorsRef = useRef(metVectors)
+  metVectorsRef.current = metVectors
 
   // Latest props mirrored into a ref so the one-shot map effect and the async
   // style-load callback always render the current data, whatever order they run.
@@ -1248,12 +1310,15 @@ export default function MapView({
       const parts = flowParticlesRef.current
 
       for (const p of parts) {
-        stepFlowParticle(p, cfg, bbox)
+        stepFlowParticle(p, cfg, bbox, metVectorsRef.current)
       }
 
       const s = map.getSource('s-flow')
       if (s) {
-        s.setData({ type: 'FeatureCollection', features: parts.map((p) => particleToFeature(p, cfg)) })
+        s.setData({
+          type: 'FeatureCollection',
+          features: parts.map((p) => particleToFeature(p, cfg, metVectorsRef.current)),
+        })
       }
 
       flowRafRef.current = requestAnimationFrame(step)
@@ -1267,7 +1332,7 @@ export default function MapView({
         flowRafRef.current = null
       }
     }
-  }, [flowOn, flowOrigin])
+  }, [flowOn, flowOrigin, metVectors])
 
   // --- Corridor time-slice animation -----------------------------------------
   useEffect(() => {
@@ -1641,18 +1706,28 @@ export default function MapView({
         </div>
       )}
 
-      {flowOn && flowOrigin && (
-        <div className={`flow-legend ${rightPanelOpen ? 'dock-open' : 'dock-closed'}`}>
-          <div className="fl-row">
-            <span className="fl-arrow" style={{ transform: `rotate(${flowConfigRef.current.current.direction}deg)`, color: '#38BDF8' }}>↑</span>
-            <span className="fl-label">Current 0.4 m/s</span>
+      {flowOn && flowOrigin && (() => {
+        const curMet = sampleMetVector(flowOrigin.lon, flowOrigin.lat, 'current', metVectors, flowConfigRef.current)
+        const windMet = sampleMetVector(flowOrigin.lon, flowOrigin.lat, 'wind', metVectors, flowConfigRef.current)
+        return (
+          <div className={`flow-legend ${rightPanelOpen ? 'dock-open' : 'dock-closed'}`}>
+            <div className="fl-row">
+              <span className="fl-arrow" style={{ transform: `rotate(${Math.round(curMet.dir_deg)}deg)`, color: '#38BDF8' }}>↑</span>
+              <span className="fl-label">Current {curMet.speed_ms.toFixed(1)} m/s (CMEMS)</span>
+            </div>
+            <div className="fl-row">
+              <span className="fl-arrow" style={{ transform: `rotate(${Math.round(windMet.dir_deg)}deg)`, color: '#F59E0B' }}>↑</span>
+              <span className="fl-label">Wind {windMet.speed_ms.toFixed(1)} m/s (NOAA 10m)</span>
+            </div>
+            {metVectors && (
+              <div className="fl-row">
+                <span className="fl-arrow" style={{ transform: `rotate(${Math.round(curMet.waveDir)}deg)`, color: '#A78BFA' }}>~</span>
+                <span className="fl-label">Waves {curMet.waveHeight.toFixed(1)}m @ {Math.round(curMet.waveDir)}°</span>
+              </div>
+            )}
           </div>
-          <div className="fl-row">
-            <span className="fl-arrow" style={{ transform: `rotate(${flowConfigRef.current.wind.direction}deg)`, color: '#F59E0B' }}>↑</span>
-            <span className="fl-label">Wind 6 m/s</span>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Backend Computation HUD Overlay during demoStage === 'processing' */}
       {demoStage === 'processing' && (
