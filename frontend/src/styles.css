@@ -3887,3 +3887,810 @@ body.light-theme .demo-instant-btn:hover:not(:disabled) {
 [data-theme="light"] .terminal-title {
   color: var(--text-secondary);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SAR SATELLITE IMAGERY INGESTION MODAL (PROMPT ON DEMO CLICK)
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sar-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 12, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: sarModalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sarModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sar-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 660px;
+  background: rgba(10, 15, 20, 0.97);
+  border: 1px solid rgba(245, 166, 35, 0.45);
+  border-top: 3px solid #F5A623;
+  border-radius: 6px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75), 0 0 24px rgba(245, 166, 35, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 28px;
+  max-height: 92vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: sarModalPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sarModalPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Modal Header */
+.sar-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 14px;
+}
+
+.sar-header-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sar-radar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 4px;
+  background: rgba(245, 166, 35, 0.12);
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  color: #F5A623;
+  flex-shrink: 0;
+}
+
+.sar-modal-title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #FFFFFF;
+}
+
+.sar-modal-sub {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #94A3B8;
+  margin-top: 3px;
+}
+
+.sar-modal-close-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94A3B8;
+  font-size: 16px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.sar-modal-close-btn:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Modal Notice */
+.sar-modal-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #CBD5E1;
+}
+
+.sar-modal-notice .notice-icon {
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.sar-modal-notice .notice-text {
+  flex: 1;
+}
+
+/* Dropzone Area */
+.sar-dropzone {
+  position: relative;
+  min-height: 190px;
+  border: 2px dashed rgba(245, 166, 35, 0.35);
+  border-radius: 6px;
+  background: rgba(5, 9, 14, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.sar-dropzone:hover {
+  border-color: rgba(245, 166, 35, 0.7);
+  background: rgba(245, 166, 35, 0.04);
+}
+
+.sar-dropzone.dragging {
+  border-color: #F5A623;
+  background: rgba(245, 166, 35, 0.12);
+  box-shadow: 0 0 20px rgba(245, 166, 35, 0.25) inset;
+}
+
+.sar-dropzone.has-file {
+  border-style: solid;
+  border-color: rgba(245, 166, 35, 0.45);
+  background: rgba(10, 15, 22, 0.85);
+  padding: 16px;
+  cursor: default;
+}
+
+.sar-dropzone.analyzing {
+  cursor: wait;
+  border-color: #F5A623;
+  background: rgba(8, 12, 18, 0.95);
+}
+
+/* Dropzone Empty Prompt */
+.sar-dropzone-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.sar-upload-icon-circle {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #F5A623;
+  transition: all 0.2s ease;
+}
+
+.sar-dropzone:hover .sar-upload-icon-circle {
+  transform: scale(1.05);
+  background: rgba(245, 166, 35, 0.18);
+  border-color: #F5A623;
+}
+
+.sar-dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.drop-main-text {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #F8FAFC;
+}
+
+.drop-sub-text {
+  font-size: 11px;
+  color: #94A3B8;
+  letter-spacing: 0.02em;
+}
+
+.sar-browse-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 16px;
+  background: rgba(245, 166, 35, 0.15);
+  border: 1px solid rgba(245, 166, 35, 0.5);
+  border-radius: 3px;
+  color: #FCD34D;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.sar-browse-btn:hover {
+  background: rgba(245, 166, 35, 0.28);
+  border-color: #F5A623;
+  color: #FFFFFF;
+}
+
+/* File Preview Card Inside Dropzone */
+.sar-file-preview-card {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.sar-preview-visual {
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: #020617;
+  border: 1px solid rgba(245, 166, 35, 0.35);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sar-img-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.sar-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(1.15) brightness(0.95);
+}
+
+.sar-scan-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 166, 35, 0) 0%,
+    rgba(245, 166, 35, 0.25) 50%,
+    rgba(245, 166, 35, 0) 100%
+  );
+  animation: scanlineMove 2.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes scanlineMove {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.sar-target-reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(245, 166, 35, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sar-target-reticle::before,
+.sar-target-reticle::after {
+  content: '';
+  position: absolute;
+  background: rgba(245, 166, 35, 0.8);
+}
+
+.sar-target-reticle::before {
+  top: 50%;
+  left: -4px;
+  right: -4px;
+  height: 1px;
+}
+
+.sar-target-reticle::after {
+  left: 50%;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+}
+
+.sar-tiff-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  color: #F5A623;
+  text-align: center;
+  padding: 8px;
+}
+
+.radar-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-size: 16px 16px;
+  background-image: 
+    linear-gradient(to right, rgba(245, 166, 35, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 166, 35, 0.1) 1px, transparent 1px);
+}
+
+.tiff-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #FCD34D;
+}
+
+/* File Metadata Panel */
+.sar-file-meta-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sar-file-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sar-file-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(245, 166, 35, 0.2);
+  color: #FCD34D;
+  border: 1px solid rgba(245, 166, 35, 0.4);
+}
+
+.sar-file-remove-btn {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #F87171;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sar-file-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #EF4444;
+  color: #FFFFFF;
+}
+
+.sar-meta-filename {
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFFFFF;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+}
+
+.sar-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-cell.full-width {
+  grid-column: 1 / -1;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cell-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #94A3B8;
+  letter-spacing: 0.06em;
+}
+
+.cell-value {
+  font-size: 11px;
+  font-weight: 500;
+  color: #F1F5F9;
+}
+
+.highlight-green {
+  color: #34D399;
+  font-weight: 600;
+}
+
+/* Tactical Scanning / Analyzing State */
+.sar-analyzing-wrap {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  padding: 10px 14px;
+}
+
+.sar-radar-sweep-animation {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 166, 35, 0.6);
+  position: relative;
+  background: rgba(2, 6, 23, 0.8);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sweep-line {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(245, 166, 35, 0.5) 0deg, transparent 60deg, transparent 360deg);
+  animation: radarSweep 1.6s linear infinite;
+}
+
+@keyframes radarSweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sweep-circle {
+  position: absolute;
+  border: 1px dashed rgba(245, 166, 35, 0.3);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.sweep-circle.circle-1 { width: 30px; height: 30px; }
+.sweep-circle.circle-2 { width: 60px; height: 60px; }
+.sweep-circle.circle-3 { width: 88px; height: 88px; border-style: solid; border-color: rgba(245, 166, 35, 0.45); }
+
+.sweep-crosshair {
+  position: absolute;
+  background: rgba(245, 166, 35, 0.35);
+}
+
+.sweep-crosshair.x-axis {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.sweep-crosshair.y-axis {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.sar-analyzing-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.analyzing-headline {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #F5A623;
+}
+
+.analyzing-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748B;
+  transition: color 0.2s ease;
+}
+
+.step-item.active {
+  color: #F8FAFC;
+}
+
+.step-bullet {
+  color: #F5A623;
+  font-weight: 700;
+  min-width: 10px;
+}
+
+/* Benchmark Shortcut Bar */
+.sar-benchmark-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(245, 166, 35, 0.06);
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  border-radius: 4px;
+  padding: 8px 14px;
+}
+
+.benchmark-bar-label {
+  font-size: 11px;
+  color: #94A3B8;
+  letter-spacing: 0.03em;
+}
+
+.sar-benchmark-quick-btn {
+  background: transparent;
+  border: 1px solid rgba(245, 166, 35, 0.5);
+  color: #FCD34D;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sar-benchmark-quick-btn:hover {
+  background: rgba(245, 166, 35, 0.2);
+  border-color: #F5A623;
+  color: #FFFFFF;
+}
+
+/* Modal Footer */
+.sar-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 14px;
+  margin-top: 4px;
+}
+
+.sar-footer-status {
+  font-size: 10px;
+  letter-spacing: 0.05em;
+}
+
+.status-ready {
+  color: #34D399;
+  font-weight: 700;
+}
+
+.status-idle {
+  color: #64748B;
+}
+
+.sar-footer-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sar-cancel-btn {
+  height: 36px;
+  padding: 0 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #94A3B8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sar-cancel-btn:hover:not(:disabled) {
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sar-launch-btn {
+  height: 36px;
+  padding: 0 20px;
+  background: #F5A623;
+  border: 1px solid #F5A623;
+  border-radius: 3px;
+  color: #080C10;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sar-launch-btn:hover:not(:disabled) {
+  background: #FFAE33;
+  box-shadow: 0 0 16px rgba(245, 166, 35, 0.6);
+  transform: translateY(-1px);
+}
+
+.sar-launch-btn:disabled,
+.sar-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Light Theme Overrides for SarUploadModal */
+[data-theme="light"] .sar-modal-overlay {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+[data-theme="light"] .sar-modal-card {
+  background: #FFFFFF;
+  border-color: rgba(217, 119, 6, 0.45);
+  border-top-color: #D97706;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15), 0 0 20px rgba(217, 119, 6, 0.1);
+}
+
+[data-theme="light"] .sar-radar-icon {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.4);
+  color: #B45309;
+}
+
+[data-theme="light"] .sar-modal-title {
+  color: #0F172A;
+}
+
+[data-theme="light"] .sar-modal-sub {
+  color: #64748B;
+}
+
+[data-theme="light"] .sar-modal-close-btn {
+  color: #64748B;
+}
+
+[data-theme="light"] .sar-modal-close-btn:hover {
+  color: #0F172A;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .sar-modal-notice {
+  background: rgba(2, 132, 199, 0.08);
+  border-color: rgba(2, 132, 199, 0.25);
+  color: #1E293B;
+}
+
+[data-theme="light"] .sar-dropzone {
+  background: #F8FAFC;
+  border-color: rgba(217, 119, 6, 0.35);
+}
+
+[data-theme="light"] .sar-dropzone:hover {
+  background: rgba(217, 119, 6, 0.04);
+  border-color: #D97706;
+}
+
+[data-theme="light"] .sar-dropzone.has-file {
+  background: #F1F5F9;
+  border-color: rgba(217, 119, 6, 0.5);
+}
+
+[data-theme="light"] .drop-main-text {
+  color: #0F172A;
+}
+
+[data-theme="light"] .drop-sub-text {
+  color: #64748B;
+}
+
+[data-theme="light"] .sar-browse-btn {
+  background: rgba(217, 119, 6, 0.1);
+  border-color: rgba(217, 119, 6, 0.4);
+  color: #B45309;
+}
+
+[data-theme="light"] .sar-browse-btn:hover {
+  background: rgba(217, 119, 6, 0.2);
+  color: #78350F;
+}
+
+[data-theme="light"] .sar-meta-filename {
+  color: #0F172A;
+}
+
+[data-theme="light"] .sar-meta-grid {
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .cell-value {
+  color: #0F172A;
+}
+
+[data-theme="light"] .sar-benchmark-bar {
+  background: rgba(217, 119, 6, 0.06);
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+[data-theme="light"] .sar-benchmark-quick-btn {
+  border-color: rgba(217, 119, 6, 0.4);
+  color: #B45309;
+}
+
+[data-theme="light"] .sar-benchmark-quick-btn:hover {
+  background: rgba(217, 119, 6, 0.15);
+  color: #78350F;
+}
+
+[data-theme="light"] .sar-cancel-btn {
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #64748B;
+}
+
+[data-theme="light"] .sar-cancel-btn:hover:not(:disabled) {
+  color: #0F172A;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .sar-launch-btn {
+  background: #D97706;
+  border-color: #D97706;
+  color: #FFFFFF;
+}
+
+[data-theme="light"] .sar-launch-btn:hover:not(:disabled) {
+  background: #B45309;
+}
+

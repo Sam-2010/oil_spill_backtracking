@@ -7,6 +7,7 @@ import SlickDetail from './components/SlickDetail.jsx'
 import VesselCard from './components/VesselCard.jsx'
 import LoginPage from './components/LoginPage.jsx'
 import TelemetryStatusBar from './components/TelemetryStatusBar.jsx'
+import SarUploadModal from './components/SarUploadModal.jsx'
 import { loadDemoData } from './demoData.js'
 
 // Demo pacing (ms).
@@ -51,6 +52,8 @@ export default function App() {
   const [demoData, setDemoData] = useState(null)
   const [flowOn, setFlowOn] = useState(false)
   const [flowOrigin, setFlowOrigin] = useState(null)
+  const [sarModalOpen, setSarModalOpen] = useState(false)
+  const [uploadedSarInfo, setUploadedSarInfo] = useState(null)
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => {
@@ -307,19 +310,36 @@ export default function App() {
     localStorage.removeItem('krishnasindhu_session')
   }, [])
 
-  // Demo flow handlers
-  const handleOpenDemo = useCallback(async () => {
-    // Reset and start demo
+  // Demo flow handlers - trigger SAR upload prompt
+  const handleOpenDemo = useCallback(() => {
+    setSarModalOpen(true)
+  }, [])
+
+  // Execute demo simulation with uploaded SAR image metadata (in-memory only, no server persistence)
+  const handleConfirmSarUpload = useCallback(async (sarInfo) => {
+    setUploadedSarInfo(sarInfo)
     setDemoData(null)
     setFlowOn(false)
     setDemoStage('processing')
-    setToast('Starting oil spill forensic simulation...')
+    setToast(sarInfo?.name ? `Ingesting SAR scene: ${sarInfo.name}...` : 'Starting oil spill forensic simulation...')
 
     try {
       const data = await loadDemoData()
+      if (sarInfo) {
+        data.sarUpload = {
+          name: sarInfo.name,
+          size: sarInfo.size,
+          previewUrl: sarInfo.previewUrl,
+          isBenchmark: sarInfo.isBenchmark,
+        }
+      }
       setDemoData(data)
       setDemoStage('detected')
-      setToast('Oil slick footprint detected from Sentinel-1 SAR imagery')
+      setToast(
+        sarInfo?.name
+          ? `SAR imagery (${sarInfo.name}) processed · Oil slick footprint detected`
+          : 'Oil slick footprint detected from Sentinel-1 SAR imagery'
+      )
 
       // Sequential stage beats
       setTimeout(() => {
@@ -449,6 +469,7 @@ export default function App() {
             suspects={demoData?.suspects}
             verdict={demoData?.dossier?.forensic_verdict}
             demoStage={demoStage}
+            sarUpload={demoData?.sarUpload}
           />
         )}
       </div>
@@ -490,7 +511,14 @@ export default function App() {
         events={events}
       />
 
-      {/* 6. Notification Toast */}
+      {/* 6. SAR Image Upload Modal (Prompts user when DEMO clicked) */}
+      <SarUploadModal
+        isOpen={sarModalOpen}
+        onClose={() => setSarModalOpen(false)}
+        onConfirm={handleConfirmSarUpload}
+      />
+
+      {/* 7. Notification Toast */}
       {toast && (
         <div className="toast" role="status" onClick={() => setToast(null)} title="Click to dismiss">
           <span>{toast}</span>

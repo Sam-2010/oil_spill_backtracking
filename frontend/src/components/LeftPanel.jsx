@@ -84,6 +84,7 @@ export default function LeftPanel({
   onSelectSuspect,
   demoStage,
   verdict,
+  sarUpload,
 }) {
   const [tab, setTab] = useState('slicks')
   const [alertFilter, setAlertFilter] = useState('all')
@@ -122,7 +123,7 @@ export default function LeftPanel({
   const counts = {
     events: events.length,
     slicks: slicks.length,
-    scenes: scenes.length,
+    scenes: scenes.length + (sarUpload ? 1 : 0),
     risk: riskStatus?.n_positive || 0,
     suspects: suspects?.features?.length || 0,
   }
@@ -275,7 +276,68 @@ export default function LeftPanel({
 
         {tab === 'scenes' && (
           <ul className="feed scenes-feed">
-            {scenes.length === 0 && (
+            {sarUpload && (
+              <li key="uploaded-sar-scene">
+                <div
+                  className="scene-card"
+                  style={{
+                    borderColor: 'rgba(245, 166, 35, 0.45)',
+                    background: 'rgba(245, 166, 35, 0.06)',
+                    boxShadow: '0 2px 10px rgba(245, 166, 35, 0.1)',
+                  }}
+                >
+                  <div className="scene-card-header-row">
+                    <div className="scene-mode-chips">
+                      <span
+                        className="scene-chip"
+                        style={{
+                          background: '#F5A623',
+                          color: '#080C10',
+                          fontWeight: '700',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        USER INGEST
+                      </span>
+                      <span className="scene-chip">IW</span>
+                      <span className="scene-chip">GRDH</span>
+                      <span className="scene-chip">VV+VH</span>
+                    </div>
+                    <span className="scene-size mono">
+                      {sarUpload.size ? `${(sarUpload.size / (1024 * 1024)).toFixed(1)} MB` : '~48 MB'}
+                    </span>
+                  </div>
+
+                  <div
+                    className="scene-datetime mono"
+                    style={{
+                      color: '#F8FAFC',
+                      fontWeight: 600,
+                      wordBreak: 'break-all',
+                      fontSize: '11px',
+                      lineHeight: '1.3',
+                      margin: '4px 0',
+                    }}
+                    title={sarUpload.name}
+                  >
+                    🛰️ {sarUpload.name}
+                  </div>
+
+                  <div className="scene-card-footer">
+                    <div className="scene-fragments mono">
+                      <span className="scene-fragment" style={{ color: '#34D399', borderColor: 'rgba(52, 211, 153, 0.3)' }}>
+                        RAM ONLY
+                      </span>
+                      <span className="scene-fragment">GOM AOI</span>
+                    </div>
+                    <span className="scene-status-badge st-detected" style={{ background: '#3DAD6E', color: '#080C10', fontWeight: 'bold' }}>
+                      PROCESSED
+                    </span>
+                  </div>
+                </div>
+              </li>
+            )}
+            {scenes.length === 0 && !sarUpload && (
               <div className="empty-state-box">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
                   <circle cx="12" cy="12" r="10" />
