@@ -106,15 +106,15 @@ export default function LoginPage({ onLoginSuccess, theme, onToggleTheme }) {
         {/* Editorial Hero Block */}
         <div className="editorial-hero">
           <h1 className="editorial-headline">
-            74 Active Monitoring Zones. 0 Unattributed Incidents Since June.
+            Satellite SAR Surveillance. Automated Forensic Attribution.
           </h1>
           <p className="editorial-body">
-            Real-time SAR radar + ML attribution for maritime oil spill detection.
+            Real-time radar oil-spill detection, hydrodynamic backtracking, and vessel kinematics.
           </p>
           <div className="editorial-telemetry">
-            <span className="telemetry-coords mono">59°54'N 025°48'E</span>
+            <span className="telemetry-coords mono">SENTINEL-1 C-BAND SAR</span>
             <span className="telemetry-sep">/</span>
-            <span className="telemetry-timestamp mono">2026-09-26T14:32:08Z</span>
+            <span className="telemetry-timestamp mono">REVERSE LAGRANGIAN</span>
             <span className="telemetry-sep">/</span>
             <span className="telemetry-accuracy mono">98.4% ACCURACY</span>
           </div>
