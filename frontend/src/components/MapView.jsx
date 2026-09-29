@@ -48,8 +48,8 @@ const C = {
   amber: '#F59E0B', cyan: '#38BDF8', spill: '#EF4444', good: '#10B981',
 }
 
-// Gulf of Finland AOI. MapLibre takes [lon, lat] — the opposite of Leaflet.
-const HOME = { center: [80.0, 16.0], zoom: 5 }
+// Primary surveillance AOI (Mississippi Canyon / Gulf of Mexico). MapLibre takes [lon, lat].
+const HOME = { center: [-88.97, 28.93], zoom: 10.5 }
 
 // Atmosphere. Alpha below 1 at low zoom lets the starfield behind the canvas
 // show through, so the Earth reads as a planet in space, not a flat disc.

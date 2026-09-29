@@ -92,7 +92,7 @@ export default function Header({
             <h1>Krishna Sindhu</h1>
             <span className="system-tag">S1 MONITOR</span>
           </div>
-          <p>Gulf of Finland · SAR Oil-Spill Intelligence</p>
+          <p>SAR Oil-Spill Intelligence & Forensic Attribution</p>
         </div>
       </div>
 
@@ -266,7 +266,7 @@ export default function Header({
           <button
             className="header-btn"
             onClick={onResetView}
-            title="Reset Map to Gulf of Finland AOI">
+            title="Reset Map to Primary AOI">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />

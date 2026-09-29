@@ -229,25 +229,25 @@ export default function LeftPanel({
                 <div className="terminal-header-line">
                   <span className="terminal-label">ACTIVE PASS</span>
                   <span className="terminal-sep">·</span>
-                  <span className="terminal-value">GULF OF FINLAND</span>
+                  <span className="terminal-value">MARITIME SURVEILLANCE AOI</span>
                 </div>
                 <div className="terminal-progress-wrap">
                   <div className="terminal-progress-bar">
                     <div className="terminal-progress-fill"></div>
                   </div>
-                  <span className="terminal-status">SCANNING</span>
+                  <span className="terminal-status">MONITORING</span>
                 </div>
                 <div className="terminal-meta">
-                  <span>Swath: 250km × 1800km</span>
+                  <span>Sentinel-1 SAR C-Band Synthetic Aperture Radar</span>
                 </div>
                 <div className="terminal-stats">
                   <div className="terminal-stat">
-                    <span className="terminal-stat-label">Clean passes (7d):</span>
-                    <span className="terminal-stat-value">12</span>
+                    <span className="terminal-stat-label">Coverage:</span>
+                    <span className="terminal-stat-value">Active Swath</span>
                   </div>
                   <div className="terminal-stat">
-                    <span className="terminal-stat-label">Last detection:</span>
-                    <span className="terminal-stat-value">4d 7h ago</span>
+                    <span className="terminal-stat-label">Status:</span>
+                    <span className="terminal-stat-value">Nominal</span>
                   </div>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export default function LeftPanel({
                     <span className="risk-auc-pill mono">AUC {riskStatus.auc_mean?.toFixed(3)}</span>
                   </div>
                   <p className="risk-desc">
-                    Spatial machine-learning grid trained on <b>{riskStatus.n_positive}</b> historical SkyTruth Cerulean detections across <b>{riskStatus.n_cells}</b> Baltic sea cells.
+                    Spatial machine-learning grid trained on <b>{riskStatus.n_positive}</b> historical SkyTruth Cerulean detections across <b>{riskStatus.n_cells}</b> maritime risk cells.
                   </p>
 
                   <div className="feature-importances">

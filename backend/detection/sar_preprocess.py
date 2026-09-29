@@ -37,7 +37,7 @@ def unpack_safe(zip_path: str | Path, dest_dir: Path) -> Path:
 
 def find_measurement(safe_dir: Path) -> tuple[Path, str]:
     """Return (tiff_path, polarization) - prefers VV (oil contrast is
-    stronger and less wind-saturated than VH at Baltic wind speeds)."""
+    stronger and less wind-saturated than VH at typical sea surface wind speeds)."""
     tiffs = sorted((safe_dir / "measurement").glob("*.tiff")) or \
         sorted((safe_dir / "measurement").glob("*.tif"))
     if not tiffs:

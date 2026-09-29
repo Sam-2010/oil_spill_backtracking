@@ -184,7 +184,7 @@ export default function VesselCard({ details, onShowTrack, onClose }) {
           <ul className="stops-list">
             {h.stops.slice(0, 3).map((s, i) => (
               <li key={i} className="mono dim">
-                • {s.minutes} min stop @ {s.lat.toFixed(2)}°N {s.lon.toFixed(2)}°E
+                • {s.minutes} min stop @ {Math.abs(s.lat).toFixed(2)}°{s.lat >= 0 ? 'N' : 'S'} {Math.abs(s.lon).toFixed(2)}°{s.lon >= 0 ? 'E' : 'W'}
               </li>
             ))}
           </ul>
