@@ -387,60 +387,122 @@ function getBoundsFromGeoJSON(fc) {
 // --- Flow field animation utilities ----------------------------------------
 function createFlowParticle(center, type, idx) {
   // Random seed within bbox around center (approx 0.8 degrees)
-  const spread = 0.4
+  const spread = 0.5
   const angle = Math.random() * Math.PI * 2
   const dist = Math.random() * spread
   const lon = center[0] + Math.cos(angle) * dist
-  const lat = center[1] + Math.sin(angle) * dist * 0.7 // flatten for latitude
-  const length = 0.08 + Math.random() * 0.05 // line length in degrees
+  const lat = center[1] + Math.sin(angle) * dist * 0.75 // flatten for latitude
+
+  // Natural lengths: wind is longer and sweeping (0.10 to 0.18 deg), currents tighter (0.06 to 0.11 deg)
+  const length = type === 'wind'
+    ? 0.11 + Math.random() * 0.07
+    : 0.06 + Math.random() * 0.05
+
+  // Natural curvature:
+  // Wind has sweeping atmospheric cyclonic/anticyclonic curvature (-0.45 to +0.45)
+  // Water current has subtle hydrodynamic drift curvature (-0.25 to +0.25)
+  const curvature = type === 'wind'
+    ? (Math.random() - 0.48) * 0.55
+    : (Math.random() - 0.5) * 0.35
+
+  const waveAmp = type === 'wind' ? 0.015 + Math.random() * 0.015 : 0.008 + Math.random() * 0.01
+  const phase = Math.random() * Math.PI * 2
+
   return {
     id: `${type}-${idx}`,
     type,
     lon,
     lat,
     length,
-    progress: Math.random(), // 0-1 along the flow direction
+    curvature,
+    waveAmp,
+    phase,
+    progress: Math.random(),
+    age: Math.floor(Math.random() * 120),
+    maxAge: 180 + Math.floor(Math.random() * 120),
   }
 }
 
 function stepFlowParticle(p, config, bbox) {
-  const dirRad = (config[p.type].direction * Math.PI) / 180
+  const baseDir = config[p.type].direction
+  // Spatial curl: natural atmospheric & oceanic flow has subtle spatial gradient across the Gulf
+  const spatialCurl = Math.sin(p.lon * 6.5 + p.lat * 5.2 + p.phase * 0.15) * 18.0
+  const personalCurl = p.curvature * 22.0
+  const totalAngleDeg = baseDir + spatialCurl + personalCurl
+  const dirRad = (totalAngleDeg * Math.PI) / 180
+
   const speed = config[p.type].speed
   const dx = Math.cos(dirRad) * speed
-  const dy = Math.sin(dirRad) * speed
+  const dy = Math.sin(dirRad) * speed * 0.8 // latitude aspect flattening
 
   p.lon += dx
   p.lat += dy
+  p.age = (p.age || 0) + 1
 
-  // Wrap if outside bbox
-  if (p.lon < bbox.minLng || p.lon > bbox.maxLng || p.lat < bbox.minLat || p.lat > bbox.maxLat) {
-    const spread = 0.4
-    const edge = Math.floor(Math.random() * 4) // 0=left, 1=right, 2=bottom, 3=top
-    switch (edge) {
-      case 0: // left edge, heading right
-        p.lon = bbox.minLng + 0.02
-        p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat)
-        break
-      case 1: // right edge, heading left (but we keep flow dir, so come from opposite)
-      default:
-        p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng)
-        p.lat = bbox.minLat + 0.02
-        break
+  // Respawn gracefully if outside bbox or past max age
+  const outOfBounds = p.lon < bbox.minLng || p.lon > bbox.maxLng || p.lat < bbox.minLat || p.lat > bbox.maxLat
+  if (outOfBounds || p.age > (p.maxAge || 240)) {
+    p.age = 0
+    // Re-seed at an upstream boundary or within flow field
+    const edge = Math.floor(Math.random() * 3)
+    if (edge === 0) {
+      // Left/West boundary
+      p.lon = bbox.minLng + 0.01 + Math.random() * 0.04
+      p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat)
+    } else if (edge === 1) {
+      // Bottom/South boundary
+      p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng)
+      p.lat = bbox.minLat + 0.01 + Math.random() * 0.04
+    } else {
+      // Interior flow field
+      p.lon = bbox.minLng + Math.random() * (bbox.maxLng - bbox.minLng) * 0.75
+      p.lat = bbox.minLat + Math.random() * (bbox.maxLat - bbox.minLat) * 0.75
     }
   }
   return p
 }
 
 function particleToFeature(p, config) {
-  const dirRad = (config[p.type].direction * Math.PI) / 180
-  const dx = Math.cos(dirRad) * p.length
-  const dy = Math.sin(dirRad) * p.length * 0.7 // latitude flattening
+  const baseDir = config[p.type].direction
+  const spatialCurl = Math.sin(p.lon * 6.5 + p.lat * 5.2 + p.phase * 0.15) * 18.0
+  const personalCurl = p.curvature * 22.0
+  const totalAngleDeg = baseDir + spatialCurl + personalCurl
+  const dirRad = (totalAngleDeg * Math.PI) / 180
+
+  // Multi-point smooth curved streamline (6 points)
+  const numPts = 6
+  const coords = []
+
+  for (let i = 0; i <= numPts; i++) {
+    const u = i / numPts // 0 to 1 from tail to head
+    const forwardDist = u * p.length
+
+    // Forward displacement along flow vector
+    const fx = Math.cos(dirRad) * forwardDist
+    const fy = Math.sin(dirRad) * forwardDist * 0.75
+
+    // Normal vector perpendicular to flow direction
+    const nx = -Math.sin(dirRad)
+    const ny = Math.cos(dirRad) * 0.75
+
+    // Smooth aerodynamic/hydrodynamic lateral curve:
+    // Parabolic arc (curves out and gently sweeps) + subtle sinusoidal undulation
+    const arc = Math.sin(u * Math.PI) * p.curvature * p.length * 0.75
+    const wave = Math.sin(u * Math.PI * 1.5 + p.phase) * (p.waveAmp || 0.01) * 0.5
+    const lateralOffset = arc + wave
+
+    coords.push([
+      p.lon + fx + nx * lateralOffset,
+      p.lat + fy + ny * lateralOffset,
+    ])
+  }
+
   return {
     type: 'Feature',
     properties: { type: p.type, color: config[p.type].color, width: config[p.type].width },
     geometry: {
       type: 'LineString',
-      coordinates: [[p.lon, p.lat], [p.lon + dx, p.lat + dy]],
+      coordinates: coords,
     },
   }
 }
@@ -457,8 +519,12 @@ function initFlowSourceAndLayers(map) {
       paint: {
         'line-color': ['get', 'color'],
         'line-width': ['get', 'width'],
-        'line-opacity': 0.7,
+        'line-opacity': 0.78,
         'line-blur': 0.5,
+      },
+      layout: {
+        'line-cap': 'round',
+        'line-join': 'round',
       },
     })
   }
@@ -1162,8 +1228,8 @@ export default function MapView({
     // Set up bbox and particles
     flowBboxRef.current = computeFlowBbox(origin)
     const particles = []
-    for (let i = 0; i < 80; i++) particles.push(createFlowParticle(origin, 'current', i))
-    for (let i = 0; i < 40; i++) particles.push(createFlowParticle(origin, 'wind', i + 80))
+    for (let i = 0; i < 85; i++) particles.push(createFlowParticle(origin, 'current', i))
+    for (let i = 0; i < 65; i++) particles.push(createFlowParticle(origin, 'wind', i + 85))
     flowParticlesRef.current = particles
 
     const step = (ts) => {
