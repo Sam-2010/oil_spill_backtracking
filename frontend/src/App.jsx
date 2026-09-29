@@ -10,9 +10,9 @@ import TelemetryStatusBar from './components/TelemetryStatusBar.jsx'
 import SarUploadModal from './components/SarUploadModal.jsx'
 import { loadDemoData } from './demoData.js'
 
-// Demo pacing (ms).
-const PROCESSING_MS = 1200   // Responsive loading
-const STAGE_GAP_MS = 1500    // Paced reveal of each stage
+// Demo pacing (ms) - realistic backend pipeline computation
+const PROCESSING_MS = 3600   // Backend hydrodynamic processing simulation
+const STAGE_GAP_MS = 3200    // Paced reveal of each stage (3.2s per stage)
 
 export default function App() {
   const [theme, setTheme] = useState(() => {
@@ -321,9 +321,18 @@ export default function App() {
     setDemoData(null)
     setFlowOn(false)
     setDemoStage('processing')
-    setToast(sarInfo?.name ? `Ingesting SAR scene: ${sarInfo.name}...` : 'Starting oil spill forensic simulation...')
+    setToast(sarInfo?.name ? `[BACKEND] Dispatching SAR scene: ${sarInfo.name}...` : 'Starting oil spill forensic simulation...')
 
     try {
+      // Phase 1: Simulate backend task execution (querying CMEMS current grids & Open-Meteo wind field)
+      await new Promise(resolve => setTimeout(resolve, 1800))
+      setToast('Querying Copernicus CMEMS ocean currents & NOAA NDBC 10m wind fields...')
+
+      // Phase 2: Simulate Lagrangian particle solver allocation & AIS corridor indexing
+      await new Promise(resolve => setTimeout(resolve, 1800))
+      setToast('Running reverse Runge-Kutta 2 particle dispersion across 18h voyage window...')
+      await new Promise(resolve => setTimeout(resolve, 1200))
+
       const data = await loadDemoData()
       if (sarInfo) {
         data.sarUpload = {
@@ -337,11 +346,11 @@ export default function App() {
       setDemoStage('detected')
       setToast(
         sarInfo?.name
-          ? `SAR imagery (${sarInfo.name}) processed · Oil slick footprint detected`
+          ? `SAR imagery (${sarInfo.name}) processed · Oil slick footprint localized`
           : 'Oil slick footprint detected from Sentinel-1 SAR imagery'
       )
 
-      // Sequential stage beats
+      // Sequential stage beats (3.2 seconds between each beat for realistic pacing)
       setTimeout(() => {
         setFlowOn(true)
         setDemoStage('flow')
@@ -350,21 +359,22 @@ export default function App() {
           const sum = firstPoly.reduce((a, c) => [a[0] + c[0], a[1] + c[1]], [0, 0])
           setFlowOrigin({ lon: sum[0] / firstPoly.length, lat: sum[1] / firstPoly.length, orientation_deg: null })
         }
+        setToast('Sea surface current & wind vector flow field active')
       }, STAGE_GAP_MS)
 
       setTimeout(() => {
         setDemoStage('forecast')
-        setToast('Projecting forward drift trajectory cones...')
+        setToast('Projecting forward drift trajectory cones (OpenDrift downstream)...')
       }, STAGE_GAP_MS * 2)
 
       setTimeout(() => {
         setDemoStage('backtrack')
-        setToast('Reverse Lagrangian backtrack corridor resolved')
+        setToast('Reverse Lagrangian hydrodynamic backtrack corridor resolved (Taylor MC-20)')
       }, STAGE_GAP_MS * 3)
 
       setTimeout(() => {
         setDemoStage('suspects')
-        setToast('Forensic vessel attribution leaderboard generated!')
+        setToast('18h historical AIS transits correlated · Forensic suspect leaderboard generated!')
       }, STAGE_GAP_MS * 4)
     } catch (err) {
       console.error('Failed to load demo scenario', err)

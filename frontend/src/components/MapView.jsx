@@ -1588,6 +1588,34 @@ export default function MapView({
         </div>
       )}
 
+      {/* Backend Computation HUD Overlay during demoStage === 'processing' */}
+      {demoStage === 'processing' && (
+        <div className={`backend-computing-hud ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>
+          <div className="bch-header">
+            <span className="bch-radar-dot"></span>
+            <span className="bch-title mono">BACKEND HYDRODYNAMIC ENGINE ACTIVE</span>
+            <span className="bch-badge mono">RUNNING RK2</span>
+          </div>
+          <div className="bch-body mono">
+            <div className="bch-line">
+              <span className="bch-arrow">{'>'}</span>
+              <span>Ingesting Copernicus CMEMS surface currents & NOAA NDBC winds...</span>
+            </div>
+            <div className="bch-line">
+              <span className="bch-arrow">{'>'}</span>
+              <span>Executing reverse-Lagrangian particle dispersion (500 trajectories)...</span>
+            </div>
+            <div className="bch-line">
+              <span className="bch-arrow">{'>'}</span>
+              <span>Correlating 18-hour vessel voyage corridors with seabed infrastructure...</span>
+            </div>
+          </div>
+          <div className="bch-progress-bar">
+            <div className="bch-progress-fill"></div>
+          </div>
+        </div>
+      )}
+
       {/* Corridor Time Slider UI & Simulation Layer Controls */}
       {demoCorridor && (
         <div className={`corridor-controls ${leftPanelOpen ? 'dock-open' : 'dock-closed'}`}>

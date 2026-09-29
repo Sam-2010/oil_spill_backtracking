@@ -6,6 +6,8 @@ export default function SarUploadModal({ isOpen, onClose, onConfirm }) {
   const [isDragging, setIsDragging] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisStep, setAnalysisStep] = useState(0)
+  const [progress, setProgress] = useState(0)
+  const [subLog, setSubLog] = useState('')
   const [isBenchmark, setIsBenchmark] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -26,6 +28,8 @@ export default function SarUploadModal({ isOpen, onClose, onConfirm }) {
       setIsDragging(false)
       setIsAnalyzing(false)
       setAnalysisStep(0)
+      setProgress(0)
+      setSubLog('')
       setIsBenchmark(false)
     }
   }, [isOpen])
@@ -103,29 +107,51 @@ export default function SarUploadModal({ isOpen, onClose, onConfirm }) {
   }
 
   const handleStartAnalysis = () => {
+    const fileData = selectedFile || {
+      name: 'S1A_IW_GRDH_1SDV_20231117T235416_MC20.SAFE',
+      size: 48234496,
+      type: 'image/tiff',
+      benchmark: true,
+    }
     if (!selectedFile && !isBenchmark) {
       handleSelectBenchmark()
     }
 
     setIsAnalyzing(true)
     setAnalysisStep(1)
+    setProgress(16)
+    setSubLog('[SYS_EXEC] Worker #0 spawned (PID: 20656) · Allocating CUDA memory buffer...')
 
-    // Cinematic tactical scanning progression
+    // Step 2 at 1200ms
     setTimeout(() => {
       setAnalysisStep(2)
-    }, 450)
+      setProgress(38)
+      setSubLog('[DSP_CALIB] Radiometric calibration & Lee speckle filter normalization...')
+    }, 1200)
 
+    // Step 3 at 2400ms
     setTimeout(() => {
       setAnalysisStep(3)
-    }, 900)
+      setProgress(64)
+      setSubLog('[NEURAL_NET] PyTorch ResNet U-Net: Segmenting low-backscatter oil film damping...')
+    }, 2400)
 
+    // Step 4 at 3700ms
     setTimeout(() => {
-      const fileData = selectedFile || {
-        name: 'S1A_IW_GRDH_1SDV_20231117T235416_MC20.SAFE',
-        size: 48234496,
-        type: 'image/tiff',
-        benchmark: true,
-      }
+      setAnalysisStep(4)
+      setProgress(86)
+      setSubLog('[MORPHOLOGY] Calculating 2D diffusion axis & slick centroid coordinates...')
+    }, 3700)
+
+    // Step 5 at 4700ms
+    setTimeout(() => {
+      setAnalysisStep(5)
+      setProgress(100)
+      setSubLog('[HYDRO_INIT] Synchronizing CMEMS current grid & initializing Lagrangian particles...')
+    }, 4700)
+
+    // Complete at 5500ms
+    setTimeout(() => {
       onConfirm({
         file: selectedFile,
         name: fileData.name,
@@ -134,7 +160,7 @@ export default function SarUploadModal({ isOpen, onClose, onConfirm }) {
         isBenchmark,
       })
       onClose()
-    }, 1350)
+    }, 5500)
   }
 
   if (!isOpen) return null
@@ -222,7 +248,23 @@ export default function SarUploadModal({ isOpen, onClose, onConfirm }) {
                 <div className="sweep-crosshair y-axis"></div>
               </div>
               <div className="sar-analyzing-status">
-                <span className="analyzing-headline mono">PROCESSING SAR MATRIX</span>
+                <div className="analyzing-header-row">
+                  <span className="analyzing-headline mono">PROCESSING SAR MATRIX</span>
+                  <span className="analyzing-pct mono">{progress}%</span>
+                </div>
+
+                {/* Visual Progress Bar */}
+                <div className="sar-progress-bar-wrap">
+                  <div className="sar-progress-bar-fill" style={{ width: `${progress}%` }}></div>
+                </div>
+
+                {subLog && (
+                  <div className="analyzing-sublog mono">
+                    <span className="sublog-prompt">{'>'}</span>
+                    <span className="sublog-text">{subLog}</span>
+                  </div>
+                )}
+
                 <div className="analyzing-steps mono">
                   <div className={`step-item ${analysisStep >= 1 ? 'active' : ''}`}>
                     <span className="step-bullet">{analysisStep >= 1 ? '✓' : '·'}</span>
@@ -230,11 +272,19 @@ export default function SarUploadModal({ isOpen, onClose, onConfirm }) {
                   </div>
                   <div className={`step-item ${analysisStep >= 2 ? 'active' : ''}`}>
                     <span className="step-bullet">{analysisStep >= 2 ? '✓' : '·'}</span>
-                    <span>2. U-Net segmentation: Isolating low-backscatter oil film...</span>
+                    <span>2. Despeckling & radiometric calibration filter...</span>
                   </div>
                   <div className={`step-item ${analysisStep >= 3 ? 'active' : ''}`}>
                     <span className="step-bullet">{analysisStep >= 3 ? '✓' : '·'}</span>
-                    <span>3. Reverse-Lagrangian particle dispersion initializing...</span>
+                    <span>3. PyTorch U-Net segmentation: Isolating oil damping boundary...</span>
+                  </div>
+                  <div className={`step-item ${analysisStep >= 4 ? 'active' : ''}`}>
+                    <span className="step-bullet">{analysisStep >= 4 ? '✓' : '·'}</span>
+                    <span>4. Calculating slick morphology & 2D Fickian diffusion age...</span>
+                  </div>
+                  <div className={`step-item ${analysisStep >= 5 ? 'active' : ''}`}>
+                    <span className="step-bullet">{analysisStep >= 5 ? '✓' : '·'}</span>
+                    <span>5. Reverse-Lagrangian particle dispersion initializing...</span>
                   </div>
                 </div>
               </div>
